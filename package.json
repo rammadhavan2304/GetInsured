@@ -1,0 +1,41 @@
+{
+  "name": "getinsured-portal",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "start-dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "authenticate": "dx-component-builder-sdk authenticate",
+    "create": "dx-component-builder-sdk create",
+    "buildComponent": "dx-component-builder-sdk buildComponent",
+    "publish": "dx-component-builder-sdk publish",
+    "list": "dx-component-builder-sdk list"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.13.3",
+    "@emotion/styled": "^11.13.0",
+    "@mui/icons-material": "^5.16.7",
+    "@mui/material": "^5.16.7",
+    "@pega/auth": "^0.2.27",
+    "@pega/constellationjs": "~25.1.2",
+    "@pega/cosmos-react-core": "^7.12.0",
+    "@pega/react-sdk-components": "~25.1.11",
+    "lucide-react": "^0.479.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router": "^7.8.1"
+  },
+  "devDependencies": {
+    "@pega/dx-component-builder-sdk": "~25.1.14",
+    "@pega/pcore-pconnect-typedefs": "^4.1.0",
+    "@playwright/test": "^1.60.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.5.3",
+    "vite": "^5.4.1"
+  }
+}

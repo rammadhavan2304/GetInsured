@@ -1,0 +1,243 @@
+:root {
+  color: #18212a;
+  background: #f6f8f5;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.8fr);
+  gap: 48px;
+  align-items: center;
+  padding: 56px;
+  background:
+    linear-gradient(rgba(9, 51, 65, 0.6), rgba(9, 51, 65, 0.46)),
+    url('https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&w=1800&q=80');
+  background-size: cover;
+  background-position: center;
+}
+
+.login-hero {
+  color: #fff;
+  max-width: 720px;
+}
+
+.hero-chip {
+  background: rgba(255, 255, 255, 0.92) !important;
+  color: #07526a !important;
+  font-weight: 800;
+  margin-bottom: 24px;
+}
+
+.login-title {
+  max-width: 680px;
+  font-size: clamp(2.5rem, 6vw, 5.25rem) !important;
+  line-height: 0.96 !important;
+}
+
+.login-copy {
+  max-width: 560px;
+  margin-top: 24px !important;
+  font-size: 1.15rem !important;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.login-card {
+  max-width: 440px;
+  width: 100%;
+  justify-self: end;
+}
+
+.app-frame {
+  min-height: 100vh;
+  background: #f6f8f5;
+}
+
+.topbar {
+  border-bottom: 1px solid #dfe7e2;
+}
+
+.toolbar {
+  min-height: 76px !important;
+  gap: 24px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  min-width: 220px;
+}
+
+.brand-mark,
+.stat-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #d9f3f7;
+  color: #07526a;
+}
+
+.brand-name {
+  line-height: 1 !important;
+}
+
+.brand-caption {
+  color: #60707a;
+  font-weight: 700;
+}
+
+.nav-tabs {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+}
+
+.nav-tab {
+  color: #53616a !important;
+  padding: 8px 12px !important;
+}
+
+.nav-tab.active {
+  color: #07526a !important;
+  background: #d9f3f7 !important;
+  box-shadow: inset 0 -3px 0 #0a6f8f;
+  font-weight: 800 !important;
+}
+
+.user-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-copy {
+  text-align: right;
+}
+
+.avatar {
+  background: #536d35 !important;
+  color: #fff !important;
+  font-weight: 800 !important;
+}
+
+.main-container {
+  padding-top: 32px;
+  padding-bottom: 56px;
+}
+
+.page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.stat-card .MuiCardContent-root {
+  display: grid;
+  gap: 10px;
+}
+
+.section-header,
+.card-title-row,
+.list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.list-row {
+  padding: 14px 0;
+  border-bottom: 1px solid #edf2ef;
+}
+
+.list-row:last-child {
+  border-bottom: 0;
+}
+
+.attention-row {
+  padding: 14px;
+  border: 1px solid #eadcc8;
+  background: #fff9ef;
+  border-radius: 8px;
+}
+
+.content-card {
+  height: 100%;
+}
+
+.content-card .MuiCardContent-root {
+  height: 100%;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 8px 12px;
+  font-size: 0.92rem;
+}
+
+.detail-grid span {
+  color: #60707a;
+}
+
+.detail-grid strong {
+  color: #18212a;
+}
+
+.inline-note {
+  padding: 14px 16px;
+  border-radius: 8px;
+  border: 1px solid #eadcc8;
+  background: #fff9ef;
+  color: #725018;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .login-page {
+    grid-template-columns: 1fr;
+    padding: 28px;
+  }
+
+  .login-card {
+    justify-self: stretch;
+    max-width: none;
+  }
+
+  .toolbar {
+    flex-wrap: wrap;
+    padding: 12px 0;
+  }
+
+  .brand {
+    min-width: auto;
+  }
+
+  .nav-tabs {
+    order: 3;
+    flex-basis: 100%;
+    overflow-x: auto;
+  }
+
+  .user-copy {
+    display: none;
+  }
+
+  .page-heading {
+    flex-direction: column;
+  }
+}

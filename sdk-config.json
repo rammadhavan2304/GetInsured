@@ -1,0 +1,58 @@
+{
+  "authConfig": {
+    "authService": "pega",
+    "mashupClientId": "",
+    "mashupUserIdentifier": "",
+    "mashupPassword": "",
+    "mashupGrantType": "clientCreds",
+    "portalGrantType": "clientCreds",
+    "portalClientId": "",
+    "portalClientSecret": ""
+  },
+  "serverConfig": {
+    "apiServer": "",
+    "infinityRestServerUrl": "",
+    "appAlias": "",
+    "sdkContentServerUrl": "",
+    "appPortal": "",
+    "appMashupCaseType": "",
+    "excludePortals": [
+      "pxExpress",
+      "Developer",
+      "pxPredictionStudio",
+      "pxAdminStudio",
+      "pyCaseWorker",
+      "pyCaseManager7"
+    ]
+  },
+  "dxcbConfig": {
+    "publishAccess": {
+      "rulesetName": "GetInsuredDX",
+      "rulesetVersion": "01-01-01",
+      "sourceOfComponents": "Server",
+      "devBuild": false,
+      "clientId": "",
+      "clientSecret": "",
+      "grantType": "clientCreds",
+      "redirectUri": "https://localhost:4010/",
+      "cert": "./keys/sdk-r.crt",
+      "key": "./keys/sdk-r.key",
+      "user": "",
+      "password": ""
+    },
+    "componentDefaults": {
+      "organization": "GetInsured",
+      "library": "DXComponents",
+      "version": "0.0.1",
+      "type": "Field",
+      "subtype": "Text",
+      "description": "GetInsured custom DX components",
+      "icon": "",
+      "lintAction": "show"
+    },
+    "componentTemplates": {
+      "customTemplatesPath": "",
+      "overrideTemplatesPath": ""
+    }
+  }
+}
