@@ -6,6 +6,8 @@ import type { ServiceRequestSummary } from '../types/portal';
 interface ServicesPageProps {
   serviceRequests: ServiceRequestSummary[];
   pegaConfigured: boolean;
+  startingServiceId?: string | null;
+  isPegaReady: boolean;
   onStartService: (request: ServiceRequestSummary) => void;
 }
 
@@ -16,7 +18,13 @@ const serviceIcon = (id: string) => {
   return <Wrench size={22} />;
 };
 
-export function ServicesPage({ serviceRequests, pegaConfigured, onStartService }: ServicesPageProps) {
+export function ServicesPage({
+  serviceRequests,
+  pegaConfigured,
+  startingServiceId,
+  isPegaReady,
+  onStartService
+}: ServicesPageProps) {
   return (
     <Stack spacing={3}>
       <Box className="page-heading">
@@ -27,6 +35,9 @@ export function ServicesPage({ serviceRequests, pegaConfigured, onStartService }
       </Box>
 
       {!pegaConfigured && <ActionUnavailableNotice />}
+      {pegaConfigured && !isPegaReady && (
+        <Box className="inline-note">Pega Constellation runtime is loading. Service forms will be available shortly.</Box>
+      )}
 
       <Grid container spacing={2}>
         {serviceRequests.map((request) => (
@@ -54,10 +65,10 @@ export function ServicesPage({ serviceRequests, pegaConfigured, onStartService }
                   <Button
                     variant="outlined"
                     endIcon={<ArrowRight size={18} />}
-                    disabled={!pegaConfigured}
+                    disabled={!pegaConfigured || !isPegaReady || startingServiceId === request.id}
                     onClick={() => onStartService(request)}
                   >
-                    Start request
+                    {startingServiceId === request.id ? 'Starting...' : 'Start request'}
                   </Button>
                 </Stack>
               </CardContent>

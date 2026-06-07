@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_PEGA_BASE_URL?: string;
+  readonly VITE_PEGA_DEV_PROXY?: string;
   readonly VITE_PEGA_APP_ALIAS?: string;
   readonly VITE_PEGA_CUSTOMER_ID_PARAM?: string;
   readonly VITE_PEGA_CLIENT_ID?: string;
@@ -12,6 +13,14 @@ interface ImportMetaEnv {
   readonly VITE_PEGA_REVOKE_URL?: string;
   readonly VITE_PEGA_JWKS_URL?: string;
   readonly VITE_PEGA_INTROSPECT_URL?: string;
+  readonly VITE_PEGA_API_CLIENT_ID?: string;
+  readonly VITE_PEGA_API_CLIENT_SECRET?: string;
+  readonly VITE_PEGA_API_GRANT_TYPE?: string;
+  readonly VITE_PEGA_API_AUTHORIZATION_URL?: string;
+  readonly VITE_PEGA_API_TOKEN_URL?: string;
+  readonly VITE_PEGA_API_REVOKE_URL?: string;
+  readonly VITE_PEGA_API_JWKS_URL?: string;
+  readonly VITE_PEGA_API_INTROSPECT_URL?: string;
   readonly VITE_PEGA_USERNAME?: string;
   readonly VITE_PEGA_PASSWORD?: string;
   readonly VITE_PEGA_POLICY_DATA_VIEW_ID?: string;

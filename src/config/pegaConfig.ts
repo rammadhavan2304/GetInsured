@@ -12,6 +12,8 @@ export const getPegaConfig = (): PegaRuntimeConfig | null => {
     return null;
   }
 
+  const apiClientId = valueOrUndefined(import.meta.env.VITE_PEGA_API_CLIENT_ID);
+
   return {
     baseUrl,
     appAlias: valueOrUndefined(import.meta.env.VITE_PEGA_APP_ALIAS),
@@ -30,6 +32,24 @@ export const getPegaConfig = (): PegaRuntimeConfig | null => {
       username: valueOrUndefined(import.meta.env.VITE_PEGA_USERNAME),
       password: valueOrUndefined(import.meta.env.VITE_PEGA_PASSWORD)
     },
+    apiAuth: apiClientId
+      ? {
+          clientId: apiClientId,
+          clientSecret: valueOrUndefined(import.meta.env.VITE_PEGA_API_CLIENT_SECRET),
+          grantType:
+            (valueOrUndefined(import.meta.env.VITE_PEGA_API_GRANT_TYPE) as PegaRuntimeConfig['auth']['grantType']) ||
+            'client_credentials',
+          authorizationUrl:
+            valueOrUndefined(import.meta.env.VITE_PEGA_API_AUTHORIZATION_URL) ||
+            valueOrUndefined(import.meta.env.VITE_PEGA_AUTHORIZATION_URL),
+          tokenUrl: valueOrUndefined(import.meta.env.VITE_PEGA_API_TOKEN_URL) || valueOrUndefined(import.meta.env.VITE_PEGA_TOKEN_URL),
+          revokeUrl: valueOrUndefined(import.meta.env.VITE_PEGA_API_REVOKE_URL) || valueOrUndefined(import.meta.env.VITE_PEGA_REVOKE_URL),
+          jwksUrl: valueOrUndefined(import.meta.env.VITE_PEGA_API_JWKS_URL) || valueOrUndefined(import.meta.env.VITE_PEGA_JWKS_URL),
+          introspectUrl:
+            valueOrUndefined(import.meta.env.VITE_PEGA_API_INTROSPECT_URL) ||
+            valueOrUndefined(import.meta.env.VITE_PEGA_INTROSPECT_URL)
+        }
+      : undefined,
     dataViews: {
       policies: valueOrUndefined(import.meta.env.VITE_PEGA_POLICY_DATA_VIEW_ID),
       claims: valueOrUndefined(import.meta.env.VITE_PEGA_CLAIMS_DATA_VIEW_ID),

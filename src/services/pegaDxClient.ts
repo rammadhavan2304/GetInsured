@@ -1,8 +1,11 @@
 import type {
   DataViewRequest,
   PegaAssignment,
+  PegaAssignmentResponse,
   PegaCase,
+  PegaCaseResponse,
   PegaCaseType,
+  PegaViewType,
   PegaToken,
   PegaRuntimeConfig
 } from '../types/pega';
@@ -32,11 +35,23 @@ export class PegaDxClient {
   }
 
   getApplicationApiBase() {
-    const root = this.config.baseUrl.replace(/\/$/, '');
+    const useDevProxy = import.meta.env.DEV && import.meta.env.VITE_PEGA_DEV_PROXY !== 'false';
+    const root = useDevProxy ? new URL(this.config.baseUrl).pathname.replace(/\/$/, '') : this.config.baseUrl.replace(/\/$/, '');
+
     if (this.config.appAlias) {
       return `${root}/app/${encodeURIComponent(this.config.appAlias)}/api/application/v2`;
     }
     return `${root}/api/application/v2`;
+  }
+
+  private withQuery(path: string, params: Record<string, string | boolean | undefined> = {}) {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) query.set(key, String(value));
+    });
+
+    const queryText = query.toString();
+    return queryText ? `${path}?${queryText}` : path;
   }
 
   getTokenUrl() {
@@ -145,12 +160,19 @@ export class PegaDxClient {
     return this.request<{ caseTypes?: PegaCaseType[]; data?: PegaCaseType[] }>('/casetypes');
   }
 
-  createCase(caseTypeId: string, content: Record<string, unknown> = {}) {
-    return this.request<PegaCase>('/cases', {
+  createCase(
+    caseTypeId: string,
+    content: Record<string, unknown> = {},
+    options: { viewType?: PegaViewType; pageName?: string; processID?: string } = {}
+  ) {
+    const { processID, ...queryOptions } = options;
+
+    return this.request<PegaCaseResponse>(this.withQuery('/cases', queryOptions), {
       method: 'POST',
       body: JSON.stringify({
         caseTypeID: caseTypeId,
-        content
+        content,
+        ...(processID ? { processID } : {})
       })
     });
   }
@@ -159,8 +181,20 @@ export class PegaDxClient {
     return this.request<PegaCase>(`/cases/${encodeURIComponent(caseId)}`);
   }
 
-  getAssignment(assignmentId: string) {
-    return this.request<PegaAssignment>(`/assignments/${encodeURIComponent(assignmentId)}`);
+  getAssignment(assignmentId: string, options: { viewType?: Exclude<PegaViewType, 'none'>; pageName?: string } = {}) {
+    return this.request<PegaAssignmentResponse>(
+      this.withQuery(`/assignments/${encodeURIComponent(assignmentId)}`, options)
+    );
+  }
+
+  getAssignmentAction(
+    assignmentId: string,
+    actionId: string,
+    options: { viewType?: Exclude<PegaViewType, 'none'>; excludeAdditionalActions?: boolean } = {}
+  ) {
+    return this.request<PegaAssignmentResponse>(
+      this.withQuery(`/assignments/${encodeURIComponent(assignmentId)}/actions/${encodeURIComponent(actionId)}`, options)
+    );
   }
 
   performAssignmentAction(assignmentId: string, actionId: string, content: Record<string, unknown>) {

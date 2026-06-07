@@ -1,9 +1,10 @@
 import { Box, Button, Card, CardContent, Chip, Grid, Stack, Typography } from '@mui/material';
 import { AlertCircle, ArrowRight, BadgeDollarSign, ClipboardList, ShieldCheck, Wrench } from 'lucide-react';
 import { ConfigNotice } from '../components/ConfigNotice';
-import type { ClaimSummary, DashboardSummary, PolicySummary, ServiceRequestSummary } from '../types/portal';
+import type { ClaimSummary, DashboardSummary, PolicySummary, ServiceRequestSummary, UserProfile } from '../types/portal';
 
 interface DashboardPageProps {
+  user: UserProfile;
   summary: DashboardSummary;
   policies: PolicySummary[];
   claims: ClaimSummary[];
@@ -13,6 +14,7 @@ interface DashboardPageProps {
 }
 
 export function DashboardPage({
+  user,
   summary,
   policies,
   claims,
@@ -31,7 +33,7 @@ export function DashboardPage({
     <Stack spacing={3}>
       <Box className="page-heading">
         <Box>
-          <Typography variant="h4">Welcome back, Sophia</Typography>
+          <Typography variant="h4">Welcome back, {user.name}</Typography>
           <Typography color="text.secondary">A practical view of your insurance work queue.</Typography>
         </Box>
       </Box>

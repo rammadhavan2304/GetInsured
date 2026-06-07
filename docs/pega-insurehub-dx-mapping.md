@@ -14,8 +14,7 @@ Every customer-specific request sends:
 
 ```json
 {
-  "CustomerID": "<logged-in-operator-id>",
-  "OperatorID": "<logged-in-operator-id>"
+  "CustomerID": "<logged-in-operator-id>"
 }
 ```
 

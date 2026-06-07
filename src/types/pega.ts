@@ -22,6 +22,7 @@ export interface PegaRuntimeConfig {
   appAlias?: string;
   customerIdParam: string;
   auth: PegaAuthConfig;
+  apiAuth?: PegaAuthConfig;
   dataViews: {
     policies?: string;
     claims?: string;
@@ -55,10 +56,15 @@ export interface PegaCase {
   id?: string;
   caseID?: string;
   pyID?: string;
+  caseTypeID?: string;
   status?: string;
   name?: string;
+  assignments?: PegaAssignment[];
+  availableActions?: PegaAction[];
+  content?: Record<string, unknown>;
   caseInfo?: {
-    assignments?: Array<{ ID?: string; id?: string }>;
+    assignments?: PegaAssignment[];
+    content?: Record<string, unknown>;
   };
 }
 
@@ -74,6 +80,28 @@ export interface PegaAction {
   id?: string;
   name?: string;
   label?: string;
+}
+
+export type PegaViewType = 'none' | 'form' | 'page';
+
+export interface PegaCaseResponse {
+  ID?: string;
+  data?: PegaCase;
+  nextAssignmentInfo?: {
+    ID?: string;
+    id?: string;
+    name?: string;
+    actions?: PegaAction[];
+  };
+  uiResources?: unknown;
+}
+
+export interface PegaAssignmentResponse {
+  data?: PegaAssignment & {
+    content?: Record<string, unknown>;
+    caseInfo?: PegaCase;
+  };
+  uiResources?: unknown;
 }
 
 export interface DataViewRequest {

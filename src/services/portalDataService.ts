@@ -33,6 +33,19 @@ const text = (record: AnyRecord, keys: string[], fallback = '') => {
   return fallback;
 };
 
+const numberText = (value: unknown, fallback = 'N/A') => {
+  if (typeof value === 'number') {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: value % 1 === 0 ? 0 : 2
+    }).format(value);
+  }
+
+  if (value !== undefined && value !== null && String(value).trim()) return String(value);
+  return fallback;
+};
+
 const extractRows = (response: unknown): AnyRecord[] => {
   if (Array.isArray(response)) return response.map(asRecord);
 
@@ -43,13 +56,24 @@ const extractRows = (response: unknown): AnyRecord[] => {
     if (Array.isArray(candidate)) return candidate.map(asRecord);
   }
 
+  if (Object.keys(data).length > 0) return [data];
+  if (Object.keys(root).length > 0) return [root];
+
   return [];
+};
+
+const extractResultCount = (response: unknown, fallbackRows: AnyRecord[]) => {
+  const root = asRecord(response);
+  const data = asRecord(root.data);
+  const rawCount = root.resultCount ?? root.pxResultCount ?? root.count ?? data.resultCount ?? data.pxResultCount;
+  const count = Number(rawCount);
+  return Number.isFinite(count) ? count : fallbackRows.length;
 };
 
 const normalizePolicyType = (value: string): PolicySummary['type'] => {
   if (value.toLowerCase().includes('home')) return 'Home';
   if (value.toLowerCase().includes('health')) return 'Health';
-  if (value.toLowerCase().includes('life')) return 'Life';
+  if (value.toLowerCase().includes('life') || value.toLowerCase().includes('protection') || value.toLowerCase().includes('income')) return 'Life';
   return 'Auto';
 };
 
@@ -64,6 +88,7 @@ const normalizeClaimStatus = (value: string): ClaimSummary['status'] => {
   const normalized = value.toLowerCase();
   if (normalized.includes('action')) return 'Action needed';
   if (normalized.includes('approve')) return 'Approved';
+  if (normalized.includes('reject')) return 'Rejected';
   if (normalized.includes('submit')) return 'Submitted';
   return 'Under review';
 };
@@ -78,26 +103,27 @@ const normalizeServiceStatus = (value: string): ServiceRequestSummary['status'] 
 const mapPolicies = (rows: AnyRecord[]): PolicySummary[] =>
   rows.map((row, index) => ({
     id: text(row, ['id', 'ID', 'pyID', 'PolicyID', 'policyID'], `policy-${index}`),
-    type: normalizePolicyType(text(row, ['type', 'Type', 'PolicyType', 'policyType', 'pyPolicyType'], 'Auto')),
-    policyNumber: text(row, ['policyNumber', 'PolicyNumber', 'pyPolicyNumber', 'pyID'], `POL-${index + 1}`),
-    title: text(row, ['title', 'Title', 'pyLabel', 'name', 'Name'], 'Insurance policy'),
-    status: normalizePolicyStatus(text(row, ['status', 'Status', 'pyStatusWork', 'pyStatus'], 'Active')),
-    premium: text(row, ['premium', 'Premium', 'MonthlyPremium', 'pyPremium'], 'N/A'),
-    renewalDate: text(row, ['renewalDate', 'RenewalDate', 'pyRenewalDate'], 'N/A'),
-    coveredAsset: text(row, ['coveredAsset', 'CoveredAsset', 'Asset', 'pyCoveredAsset'], 'Customer policy'),
-    deductible: text(row, ['deductible', 'Deductible', 'pyDeductible'], 'N/A')
+    type: normalizePolicyType(text(row, ['type', 'Type', 'PolicyType', 'policyType', 'pyPolicyType', 'PolicyName', 'PolicyPlan'], 'Auto')),
+    policyNumber: text(row, ['policyNumber', 'PolicyNumber', 'pyPolicyNumber', 'PolicyID', 'pyID'], `POL-${index + 1}`),
+    title: text(row, ['title', 'Title', 'pyLabel', 'PolicyName', 'name', 'Name'], 'Insurance policy'),
+    status: normalizePolicyStatus(text(row, ['status', 'Status', 'PolicyStatus', 'pyStatusWork', 'pyStatus'], 'Active')),
+    premium: numberText(row.PremiumAmount ?? row.premium ?? row.Premium ?? row.MonthlyPremium ?? row.pyPremium),
+    renewalDate: text(row, ['renewalDate', 'RenewalDate', 'ExpirationDate', 'pyRenewalDate'], 'N/A'),
+    coveredAsset: text(row, ['coveredAsset', 'CoveredAsset', 'PolicyPlan', 'Asset', 'pyCoveredAsset'], 'Customer policy'),
+    deductible: numberText(row.CoverageAmount ?? row.deductible ?? row.Deductible ?? row.pyDeductible)
   }));
 
 const mapClaims = (rows: AnyRecord[]): ClaimSummary[] =>
   rows.map((row, index) => ({
     id: text(row, ['id', 'ID', 'pyID', 'ClaimID', 'claimID'], `claim-${index}`),
-    claimNumber: text(row, ['claimNumber', 'ClaimNumber', 'pyClaimNumber', 'pyID'], `CLM-${index + 1}`),
+    claimNumber: text(row, ['claimNumber', 'ClaimNumber', 'ClaimID', 'pyClaimNumber', 'pyID'], `CLM-${index + 1}`),
     policyNumber: text(row, ['policyNumber', 'PolicyNumber', 'pyPolicyNumber'], 'N/A'),
-    title: text(row, ['title', 'Title', 'pyLabel', 'name', 'Name'], 'Insurance claim'),
-    status: normalizeClaimStatus(text(row, ['status', 'Status', 'pyStatusWork', 'pyStatus'], 'Under review')),
-    lastUpdated: text(row, ['lastUpdated', 'LastUpdated', 'pxUpdateDateTime', 'pxCreateDateTime'], 'N/A'),
-    amount: text(row, ['amount', 'Amount', 'ClaimAmount', 'pyAmount'], 'N/A'),
-    assignedTeam: text(row, ['assignedTeam', 'AssignedTeam', 'pxAssignedOperator', 'pyAssignedTo'], 'Claims')
+    title: text(row, ['title', 'Title', 'ClaimName', 'pyLabel', 'name', 'Name'], 'Insurance claim'),
+    status: normalizeClaimStatus(text(row, ['status', 'Status', 'ClaimStatus', 'pyStatusWork', 'pyStatus'], 'Under review')),
+    lastUpdated: text(row, ['lastUpdated', 'LastUpdated', 'ClaimFilingDate', 'pxUpdateDateTime', 'pxCreateDateTime'], 'N/A'),
+    amount: numberText(row.ClaimAmount ?? row.amount ?? row.Amount ?? row.pyAmount),
+    assignedTeam: text(row, ['assignedTeam', 'AssignedTeam', 'ClaimantName', 'pxAssignedOperator', 'pyAssignedTo'], 'Claims'),
+    reason: text(row, ['ClaimReason', 'reason', 'Reason', 'pyReason'])
   }));
 
 const mapServiceRequests = (rows: AnyRecord[]): ServiceRequestSummary[] =>
@@ -114,32 +140,59 @@ const buildSummary = (
   policyRows: PolicySummary[],
   claimRows: ClaimSummary[],
   serviceRows: ServiceRequestSummary[],
-  dashboardRows: AnyRecord[]
+  dashboardRows: AnyRecord[],
+  counts?: {
+    policies?: number;
+    claims?: number;
+    serviceTasks?: number;
+  }
 ): DashboardSummary => {
   const dashboard = dashboardRows[0] || {};
   return {
-    activePolicies: Number(text(dashboard, ['activePolicies', 'ActivePolicies'], String(policyRows.length))),
+    activePolicies: Number(
+      text(dashboard, ['activePolicies', 'ActivePolicies', 'PolicyCount', 'pyPolicyCount'], String(counts?.policies ?? policyRows.length))
+    ),
     openClaims: Number(
       text(
         dashboard,
-        ['openClaims', 'OpenClaims'],
-        String(claimRows.filter((claim) => claim.status !== 'Approved').length)
+        ['openClaims', 'OpenClaims', 'ClaimCount', 'OpenClaimCount', 'pyClaimCount'],
+        String(counts?.claims ?? claimRows.length)
       )
     ),
     pendingTasks: Number(
       text(
         dashboard,
-        ['pendingTasks', 'PendingTasks'],
-        String(serviceRows.filter((request) => request.status !== 'Available').length)
+        ['pendingTasks', 'PendingTasks', 'TaskCount', 'OpenTaskCount', 'pyTaskCount'],
+        String(counts?.serviceTasks ?? serviceRows.filter((request) => request.status !== 'Available').length)
       )
     ),
-    nextPayment: text(dashboard, ['nextPayment', 'NextPayment'], dashboardSummary.nextPayment)
+    nextPayment: text(dashboard, ['nextPayment', 'NextPayment', 'NextPremium', 'PaymentDue', 'pyNextPayment'], dashboardSummary.nextPayment)
+  };
+};
+
+const buildUserProfile = (customerId: string, dashboardRows: AnyRecord[]): UserProfile => {
+  const dashboard = dashboardRows[0] || {};
+  const customerName = text(
+    dashboard,
+    ['CustomerName', 'customerName', 'pyCustomerName', 'pyFullName', 'FullName', 'Name', 'pyLabel'],
+    customerId
+  );
+  const customerSince = text(
+    dashboard,
+    ['CustomerSince', 'customerSince', 'MemberSince', 'memberSince', 'pyCustomerSince', 'SinceDate', 'pxCreateDateTime'],
+    'Pega'
+  );
+  const email = text(dashboard, ['Email', 'email', 'pyEmailAddress', 'EmailAddress'], customerId);
+
+  return {
+    name: customerName,
+    email,
+    memberSince: customerSince
   };
 };
 
 export const buildCustomerParameters = (config: PegaRuntimeConfig, customerId: string) => ({
-  [config.customerIdParam]: customerId,
-  OperatorID: customerId
+  [config.customerIdParam]: customerId
 });
 
 export const buildCustomerCaseContent = (config: PegaRuntimeConfig, customerId: string, content: AnyRecord = {}) => ({
@@ -169,6 +222,16 @@ export const createDxClient = (token?: PegaToken) => {
   return config ? new PegaDxClient(config, token) : null;
 };
 
+export const createApiDxClient = () => {
+  const config = getPegaConfig();
+  if (!config) return null;
+
+  return new PegaDxClient({
+    ...config,
+    auth: config.apiAuth || config.auth
+  });
+};
+
 export const loadCustomerPortalSnapshot = async (token: PegaToken, customerId: string): Promise<PortalSnapshot> => {
   const config = getPegaConfig();
   if (!config) return getPortalSnapshot(customerId);
@@ -193,14 +256,41 @@ export const loadCustomerPortalSnapshot = async (token: PegaToken, customerId: s
       : serviceRequests;
   const loadedDashboardRows =
     dashboardResponse.status === 'fulfilled' && dashboardResponse.value ? extractRows(dashboardResponse.value) : [];
+  const counts = {
+    policies:
+      policyResponse.status === 'fulfilled' && policyResponse.value
+        ? extractResultCount(policyResponse.value, extractRows(policyResponse.value))
+        : policies.length,
+    claims:
+      claimResponse.status === 'fulfilled' && claimResponse.value
+        ? extractResultCount(claimResponse.value, extractRows(claimResponse.value))
+        : claims.length,
+    serviceTasks:
+      serviceResponse.status === 'fulfilled' && serviceResponse.value
+        ? extractResultCount(serviceResponse.value, extractRows(serviceResponse.value))
+        : serviceRequests.filter((request) => request.status !== 'Available').length
+  };
+
+  if (config.dataViews.dashboard) {
+    if (dashboardResponse.status === 'fulfilled') {
+      console.log('[Pega DX] Dashboard data view response', {
+        dataViewId: config.dataViews.dashboard,
+        customerId,
+        response: dashboardResponse.value,
+        mappedRows: loadedDashboardRows
+      });
+    } else {
+      console.warn('[Pega DX] Dashboard data view failed', {
+        dataViewId: config.dataViews.dashboard,
+        customerId,
+        error: dashboardResponse.reason
+      });
+    }
+  }
 
   return {
-    user: {
-      name: customerId,
-      email: customerId,
-      memberSince: 'Pega'
-    },
-    summary: buildSummary(loadedPolicies, loadedClaims, loadedServices, loadedDashboardRows),
+    user: buildUserProfile(customerId, loadedDashboardRows),
+    summary: buildSummary(loadedPolicies, loadedClaims, loadedServices, loadedDashboardRows, counts),
     policies: loadedPolicies.length > 0 ? loadedPolicies : policies,
     claims: loadedClaims.length > 0 ? loadedClaims : claims,
     claimCaseOptions,

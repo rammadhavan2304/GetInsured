@@ -1,5 +1,6 @@
 import { Alert, Snackbar } from '@mui/material';
-import { useState } from 'react';
+import { sdkSetAuthHeader } from '@pega/auth/lib/sdk-auth-manager';
+import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { AppShell } from './components/AppShell';
 import { getPegaConfig } from './config/pegaConfig';
@@ -15,6 +16,8 @@ import {
   getPortalSnapshot,
   loadCustomerPortalSnapshot
 } from './services/portalDataService';
+import { useConstellation } from './hooks/useConstellation';
+import { openAssignmentInConstellation } from './lib/constellation';
 import type { PegaToken } from './types/pega';
 import type { ClaimCaseOption, PolicySummary, PortalTab, ServiceRequestSummary } from './types/portal';
 
@@ -32,6 +35,24 @@ const tabFromPath = (pathname: string): PortalTab => {
   return 'dashboard';
 };
 
+const getCreatedAssignmentId = (response: unknown) => {
+  const root = response && typeof response === 'object' ? (response as Record<string, any>) : {};
+  const data = root.data && typeof root.data === 'object' ? root.data : {};
+  const caseInfo = data.caseInfo && typeof data.caseInfo === 'object' ? data.caseInfo : {};
+  const candidates = [
+    root.nextAssignmentInfo,
+    ...(Array.isArray(data.assignments) ? data.assignments : []),
+    ...(Array.isArray(caseInfo.assignments) ? caseInfo.assignments : [])
+  ].filter(Boolean);
+  const assignment = candidates.find((item) => item?.ID || item?.id || item?.assignmentID);
+  return assignment?.ID || assignment?.id || assignment?.assignmentID || root.assignmentID || root.ID;
+};
+
+const getPegaAuthHeader = (token?: PegaToken) => {
+  if (!token?.accessToken) return null;
+  return `${token.tokenType || 'Bearer'} ${token.accessToken}`;
+};
+
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authToken, setAuthToken] = useState<PegaToken | undefined>();
@@ -39,10 +60,13 @@ function App() {
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState(() => getPortalSnapshot());
   const [toast, setToast] = useState<string | null>(null);
+  const [startingServiceId, setStartingServiceId] = useState<string | null>(null);
+  const [activeAssignment, setActiveAssignment] = useState<{ assignmentID: string } | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const pegaConfig = getPegaConfig();
   const pegaConfigured = pegaConfig !== null;
+  const isPegaReady = useConstellation(isAuthenticated && pegaConfigured);
   const activeTab = tabFromPath(location.pathname);
 
   const runPegaAction = async (action: () => Promise<unknown>, successMessage: string) => {
@@ -89,13 +113,110 @@ function App() {
   };
 
   const handleStartService = (request: ServiceRequestSummary) => {
-    const client = createDxClient(authToken);
-    void runPegaAction(async () => {
-      if (!client) throw new Error('Pega client is not configured.');
-      if (!pegaConfig || !customerId) throw new Error('Customer ID is not available for this Pega request.');
-      return client.createCase(request.caseTypeId, buildCustomerCaseContent(pegaConfig, customerId, { requestType: request.title }));
-    }, 'Service request created in Pega.');
+    if (!pegaConfigured) {
+      setToast('Pega DX API is not configured yet. Add .env values to enable this action.');
+      return;
+    }
+
+    const PCore = window.PCore;
+    if (!isPegaReady || !PCore?.getMashupApi) {
+      setToast('Pega Constellation runtime is still loading. Try again in a moment.');
+      return;
+    }
+
+    const caseTypeId = request.id === 'srv-address' ? pegaConfig?.caseTypes.changeAddress || request.caseTypeId : request.caseTypeId;
+    const target = PCore.getConstants().APP.APP || 'primary';
+    const options = { containerName: 'primary', displayMode: 'workarea' };
+
+    setStartingServiceId(request.id);
+    setActiveAssignment({ assignmentID: 'NEW_CASE' });
+
+    void (async () => {
+      try {
+        const client = createDxClient(authToken);
+        if (!client || !pegaConfig || !customerId) throw new Error('Customer ID is not available for this Pega request.');
+
+        const createResponse = await client.createCase(
+          caseTypeId,
+          request.id === 'srv-address'
+            ? {}
+            : buildCustomerCaseContent(pegaConfig, customerId, {
+                requestType: request.title,
+                source: 'GetInsured portal'
+              }),
+          request.id === 'srv-address' ? { viewType: 'page', processID: 'pyStartCase' } : {}
+        );
+        const assignmentId = getCreatedAssignmentId(createResponse);
+        console.log('[Pega DX] createCase response', createResponse);
+        console.log('[Pega DX] assignment selected for openAssignment', assignmentId);
+
+        const authHeader = getPegaAuthHeader(authToken);
+        if (authHeader) {
+          sdkSetAuthHeader(authHeader);
+        }
+
+        if (assignmentId) {
+          setActiveAssignment({ assignmentID: assignmentId });
+          await openAssignmentInConstellation(assignmentId);
+        } else {
+          PCore.getMashupApi().createCase(caseTypeId, target, options);
+        }
+
+        setToast(`${request.title} case started in Pega.`);
+      } catch (error) {
+        setActiveAssignment(null);
+        setToast(error instanceof Error ? error.message : 'Unable to start Pega case.');
+      } finally {
+        setStartingServiceId(null);
+      }
+    })();
   };
+
+  useEffect(() => {
+    const root = document.getElementById('pega-root');
+    if (!root) return;
+
+    root.style.display = activeAssignment ? 'block' : 'none';
+  }, [activeAssignment]);
+
+  useEffect(() => {
+    if (!isPegaReady || !window.PCore) return;
+
+    const PCore = window.PCore;
+
+    const closeAssignment = () => {
+      setActiveAssignment(null);
+      const root = document.getElementById('pega-root');
+      if (root) root.style.display = 'none';
+    };
+
+    const handleFinish = (event: any) => {
+      const nextAssignmentId = event?.data?.nextAssignmentID || event?.nextAssignmentID;
+      if (nextAssignmentId) {
+        setActiveAssignment({ assignmentID: nextAssignmentId });
+      } else {
+        closeAssignment();
+      }
+    };
+
+    const handleCaseCreated = (event: any) => {
+      const eventData = event?.data || event;
+      const assignmentId = eventData?.assignmentID || eventData?.caseInfo?.assignments?.[0]?.ID || eventData?.ID;
+      if (assignmentId) {
+        setActiveAssignment({ assignmentID: assignmentId });
+      }
+    };
+
+    PCore.getPubSubUtils().subscribe(PCore.getConstants().PUB_SUB_EVENTS.EVENT_CANCEL, closeAssignment, 'insureHubCancel');
+    PCore.getPubSubUtils().subscribe('assignmentFinished', handleFinish, 'insureHubFinish');
+    PCore.getPubSubUtils().subscribe('caseCreated', handleCaseCreated, 'insureHubCaseCreated');
+
+    return () => {
+      PCore.getPubSubUtils().unsubscribe(PCore.getConstants().PUB_SUB_EVENTS.EVENT_CANCEL, 'insureHubCancel');
+      PCore.getPubSubUtils().unsubscribe('assignmentFinished', 'insureHubFinish');
+      PCore.getPubSubUtils().unsubscribe('caseCreated', 'insureHubCaseCreated');
+    };
+  }, [isPegaReady]);
 
   if (!isAuthenticated) {
     return (
@@ -150,6 +271,7 @@ function App() {
             path="/dashboard"
             element={
               <DashboardPage
+                user={snapshot.user}
                 summary={snapshot.summary}
                 policies={snapshot.policies}
                 claims={snapshot.claims}
@@ -186,6 +308,8 @@ function App() {
               <ServicesPage
                 serviceRequests={snapshot.serviceRequests}
                 pegaConfigured={pegaConfigured}
+                startingServiceId={startingServiceId}
+                isPegaReady={isPegaReady}
                 onStartService={handleStartService}
               />
             }
@@ -199,6 +323,8 @@ function App() {
           {toast}
         </Alert>
       </Snackbar>
+
+      <div id="pega-root" className="pega-workarea" />
     </>
   );
 }

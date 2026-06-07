@@ -207,6 +207,37 @@ body {
   font-weight: 700;
 }
 
+.pega-workarea {
+  display: none;
+  position: fixed;
+  top: 96px;
+  left: 50%;
+  width: min(1200px, calc(100vw - 32px));
+  bottom: 32px;
+  transform: translateX(-50%);
+  overflow: auto;
+  z-index: 1300;
+  border: 1px solid #dfe7e2;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.16);
+}
+
+.pega-workarea,
+.pega-workarea > div,
+.pega-workarea app-root,
+.pega-workarea app-root.mashup,
+.pega-workarea .case-view,
+.pega-workarea .page-view {
+  min-height: 100%;
+}
+
+.pega-workarea app-root,
+.pega-workarea app-root.mashup {
+  display: block;
+  height: 100%;
+}
+
 @media (max-width: 900px) {
   .login-page {
     grid-template-columns: 1fr;

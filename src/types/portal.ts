@@ -23,10 +23,11 @@ export interface ClaimSummary {
   claimNumber: string;
   policyNumber: string;
   title: string;
-  status: 'Submitted' | 'Under review' | 'Action needed' | 'Approved';
+  status: 'Submitted' | 'Under review' | 'Action needed' | 'Approved' | 'Rejected';
   lastUpdated: string;
   amount: string;
   assignedTeam: string;
+  reason?: string;
 }
 
 export interface ClaimCaseOption {

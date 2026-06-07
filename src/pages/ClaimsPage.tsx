@@ -69,6 +69,11 @@ export function ClaimsPage({ claims, claimCaseOptions, pegaConfigured, onCreateC
                   <Box>
                     <Typography variant="h6">{claim.title}</Typography>
                     <Typography color="text.secondary">Policy {claim.policyNumber}</Typography>
+                    {claim.reason && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        {claim.reason}
+                      </Typography>
+                    )}
                   </Box>
                   <Box className="detail-grid">
                     <span>Estimate</span>
