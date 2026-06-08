@@ -207,20 +207,20 @@ body {
   font-weight: 700;
 }
 
+.portal-route-content.is-hidden {
+  display: none;
+}
+
 .pega-workarea {
   display: none;
-  position: fixed;
-  top: 96px;
-  left: 50%;
-  width: min(1200px, calc(100vw - 32px));
-  bottom: 32px;
-  transform: translateX(-50%);
-  overflow: auto;
-  z-index: 1300;
-  border: 1px solid #dfe7e2;
-  border-radius: 8px;
+}
+
+.pega-workarea.is-active {
+  display: block;
+  width: 100%;
+  min-height: calc(100vh - 132px);
+  overflow: visible;
   background: #fff;
-  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.16);
 }
 
 .pega-workarea,
@@ -230,6 +230,7 @@ body {
 .pega-workarea .case-view,
 .pega-workarea .page-view {
   min-height: 100%;
+  width: 100%;
 }
 
 .pega-workarea app-root,

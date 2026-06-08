@@ -16,6 +16,8 @@ export interface PolicySummary {
   renewalDate: string;
   coveredAsset: string;
   deductible: string;
+  documentURL?: string;
+  documentId?: string;
 }
 
 export interface ClaimSummary {

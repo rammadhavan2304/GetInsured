@@ -1,4 +1,5 @@
 {
+  "sdkType": "SDK-React",
   "library": "DXComponents",
   "organization": "GetInsured",
   "rulesetName": "GetInsuredDX",

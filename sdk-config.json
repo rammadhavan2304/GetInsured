@@ -14,7 +14,7 @@
   },
   "serverConfig": {
     "apiServer": "https://kfvow8ae.pegace.net/prweb/PRAuth",
-    "infinityRestServerUrl": "https://kfvow8ae.pegace.net/prweb/PRAuth",
+    "infinityRestServerUrl": "https://kfvow8ae.pegace.net/prweb",
     "appAlias": "insurehub",
     "sdkContentServerUrl": "",
     "appPortal": "",
@@ -30,7 +30,8 @@
   },
   "dxcbConfig": {
     "publishAccess": {
-      "rulesetName": "GetInsuredDX",
+      "serverUrl": "https://kfvow8ae.pegace.net/prweb",
+      "rulesetName": "CustomDX",
       "rulesetVersion": "01-01-01",
       "sourceOfComponents": "Server",
       "devBuild": false,
@@ -51,7 +52,7 @@
       "subtype": "Text",
       "description": "GetInsured custom DX components",
       "icon": "",
-      "lintAction": "show"
+      "lintAction": "off"
     },
     "componentTemplates": {
       "customTemplatesPath": "",

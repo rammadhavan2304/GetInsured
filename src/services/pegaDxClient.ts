@@ -132,9 +132,10 @@ export class PegaDxClient {
     };
   }
 
-  async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  async request<T>(path: string, init: RequestInit = {}, baseOverride?: string): Promise<T> {
     const token = await this.authenticate();
-    const response = await fetch(`${this.getApplicationApiBase()}${path}`, {
+    const base = baseOverride || this.getApplicationApiBase();
+    const response = await fetch(`${base}${path}`, {
       ...init,
       headers: {
         Accept: 'application/json',
@@ -146,7 +147,7 @@ export class PegaDxClient {
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`Pega DX API ${path} failed with ${response.status}: ${text.slice(0, 240)}`);
+      throw new Error(`Pega API ${path} failed with ${response.status}: ${text.slice(0, 240)}`);
     }
 
     if (response.status === 204) {
@@ -219,5 +220,45 @@ export class PegaDxClient {
       method: 'POST',
       body: JSON.stringify(request)
     });
+  }
+
+  // === AI Agent (A2A / AgentX) support for policy document Q&A ===
+  // Using the standard DX application/v2 surface for /ai-agents (as documented in Pega DX APIs for Constellation).
+  // Your agent card is at agent2agent/v1 for discovery, but conversation calls typically go through application/v2/ai-agents.
+
+  async initiateAgentConversation(
+    agentId: string,
+    content: string,
+    context: Record<string, unknown> = {}
+  ) {
+    const path = `/ai-agents/${encodeURIComponent(agentId)}/conversations`;
+    return this.request<{ conversationID?: string; ID?: string; conversationId?: string }>(
+      path,
+      {
+        method: 'POST',
+        body: JSON.stringify({ content, context })
+      }
+    );
+  }
+
+  async sendMessageToAgentConversation(
+    agentId: string,
+    conversationId: string,
+    content: string,
+    context: Record<string, unknown> = {}
+  ) {
+    const path = `/ai-agents/${encodeURIComponent(agentId)}/conversations/${encodeURIComponent(conversationId)}`;
+    return this.request(
+      path,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ content, context })
+      }
+    );
+  }
+
+  async getAgentConversation(agentId: string, conversationId: string) {
+    const path = `/ai-agents/${encodeURIComponent(agentId)}/conversations/${encodeURIComponent(conversationId)}`;
+    return this.request(path);
   }
 }

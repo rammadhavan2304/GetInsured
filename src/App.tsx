@@ -1,8 +1,9 @@
-import { Alert, Snackbar } from '@mui/material';
+import { Alert, Dialog, DialogContent, Snackbar } from '@mui/material';
 import { sdkSetAuthHeader } from '@pega/auth/lib/sdk-auth-manager';
 import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { AppShell } from './components/AppShell';
+import { PolicyAIChat } from './components/PolicyAIChat';
 import { getPegaConfig } from './config/pegaConfig';
 import { DashboardPage } from './pages/DashboardPage';
 import { ClaimsPage } from './pages/ClaimsPage';
@@ -51,6 +52,7 @@ function App() {
   const [pegaRenderError, setPegaRenderError] = useState<string | null>(null);
   const [startingServiceId, setStartingServiceId] = useState<string | null>(null);
   const [activeAssignment, setActiveAssignment] = useState<{ assignmentID: string } | null>(null);
+  const [aiPolicy, setAiPolicy] = useState<import('./types/portal').PolicySummary | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const pegaConfig = getPegaConfig();
@@ -159,21 +161,12 @@ function App() {
   };
 
   useEffect(() => {
-    const root = document.getElementById('pega-root');
-    if (!root) return;
-
-    root.style.display = activeAssignment ? 'block' : 'none';
-  }, [activeAssignment]);
-
-  useEffect(() => {
     if (!isPegaReady || !window.PCore) return;
 
     const PCore = window.PCore;
 
     const closeAssignment = () => {
       setActiveAssignment(null);
-      const root = document.getElementById('pega-root');
-      if (root) root.style.display = 'none';
     };
 
     const handleFinish = (event: any) => {
@@ -251,57 +244,62 @@ function App() {
         }}
         user={snapshot.user}
       >
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route
-            path="/dashboard"
-            element={
-              <DashboardPage
-                user={snapshot.user}
-                summary={snapshot.summary}
-                policies={snapshot.policies}
-                claims={snapshot.claims}
-                serviceRequests={snapshot.serviceRequests}
-                pegaConfigured={pegaConfigured}
-                onNavigate={(tab) => navigate(tabPath[tab])}
-              />
-            }
-          />
-          <Route
-            path="/policies"
-            element={
-              <PoliciesPage
-                policies={snapshot.policies}
-                pegaConfigured={pegaConfigured}
-                onPolicyChange={handlePolicyChange}
-              />
-            }
-          />
-          <Route
-            path="/claims"
-            element={
-              <ClaimsPage
-                claims={snapshot.claims}
-                claimCaseOptions={snapshot.claimCaseOptions}
-                pegaConfigured={pegaConfigured}
-                onCreateClaim={handleCreateClaim}
-              />
-            }
-          />
-          <Route
-            path="/services"
-            element={
-              <ServicesPage
-                serviceRequests={snapshot.serviceRequests}
-                pegaConfigured={pegaConfigured}
-                startingServiceId={startingServiceId}
-                isPegaReady={isPegaReady}
-                onStartService={handleStartService}
-              />
-            }
-          />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
+        <div className={activeAssignment ? 'portal-route-content is-hidden' : 'portal-route-content'}>
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route
+              path="/dashboard"
+              element={
+                <DashboardPage
+                  user={snapshot.user}
+                  summary={snapshot.summary}
+                  policies={snapshot.policies}
+                  claims={snapshot.claims}
+                  serviceRequests={snapshot.serviceRequests}
+                  pegaConfigured={pegaConfigured}
+                  onNavigate={(tab) => navigate(tabPath[tab])}
+                />
+              }
+            />
+            <Route
+              path="/policies"
+              element={
+                <PoliciesPage
+                  policies={snapshot.policies}
+                  pegaConfigured={pegaConfigured}
+                  onPolicyChange={handlePolicyChange}
+                  onAskPolicyQuestion={setAiPolicy}
+                />
+              }
+            />
+            <Route
+              path="/claims"
+              element={
+                <ClaimsPage
+                  claims={snapshot.claims}
+                  claimCaseOptions={snapshot.claimCaseOptions}
+                  pegaConfigured={pegaConfigured}
+                  onCreateClaim={handleCreateClaim}
+                />
+              }
+            />
+            <Route
+              path="/services"
+              element={
+                <ServicesPage
+                  serviceRequests={snapshot.serviceRequests}
+                  pegaConfigured={pegaConfigured}
+                  startingServiceId={startingServiceId}
+                  isPegaReady={isPegaReady}
+                  onStartService={handleStartService}
+                />
+              }
+            />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </div>
+
+        <div id="pega-root" className={activeAssignment ? 'pega-workarea is-active' : 'pega-workarea'} />
       </AppShell>
 
       <Snackbar open={toast !== null} autoHideDuration={5200} onClose={() => setToast(null)}>
@@ -327,7 +325,35 @@ function App() {
         </Alert>
       ) : null}
 
-      <div id="pega-root" className="pega-workarea" />
+      <Dialog
+        open={!!aiPolicy}
+        onClose={() => setAiPolicy(null)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ 
+          sx: { 
+            borderRadius: 4, 
+            overflow: 'hidden',
+            boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)'
+          } 
+        }}
+        slotProps={{
+          backdrop: {
+            sx: { backgroundColor: 'rgba(0,0,0,0.6)' }
+          }
+        }}
+      >
+        <DialogContent sx={{ p: 0, height: 'min(620px, 82vh)' }}>
+          {aiPolicy && (
+            <PolicyAIChat
+              policy={aiPolicy}
+              authToken={authToken}
+              customerId={customerId}
+              onClose={() => setAiPolicy(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

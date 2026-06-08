@@ -23,7 +23,9 @@ export const policies: PolicySummary[] = [
     premium: '$128/mo',
     renewalDate: 'Aug 18, 2026',
     coveredAsset: '2023 Toyota Highlander',
-    deductible: '$500'
+    deductible: '$500',
+    documentURL: 'https://insurehub52564.blob.core.windows.net/policy-documents/Auto_Policy.pdf',
+    documentId: 'Auto_Policy.pdf'
   },
   {
     id: 'pol-home-1',
@@ -34,7 +36,9 @@ export const policies: PolicySummary[] = [
     premium: '$92/mo',
     renewalDate: 'Jul 03, 2026',
     coveredAsset: 'Primary residence',
-    deductible: '$1,000'
+    deductible: '$1,000',
+    documentURL: 'https://insurehub52564.blob.core.windows.net/policy-documents/Homeowners_Policy.pdf',
+    documentId: 'Homeowners_Policy.pdf'
   },
   {
     id: 'pol-health-1',
@@ -45,7 +49,9 @@ export const policies: PolicySummary[] = [
     premium: '$246/mo',
     renewalDate: 'Jan 01, 2027',
     coveredAsset: 'Household plan',
-    deductible: '$750'
+    deductible: '$750',
+    documentURL: 'https://insurehub52564.blob.core.windows.net/policy-documents/Health_Policy.pdf',
+    documentId: 'Health_Policy.pdf'
   }
 ];
 

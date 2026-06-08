@@ -110,8 +110,21 @@ const mapPolicies = (rows: AnyRecord[]): PolicySummary[] =>
     premium: numberText(row.PremiumAmount ?? row.premium ?? row.Premium ?? row.MonthlyPremium ?? row.pyPremium),
     renewalDate: text(row, ['renewalDate', 'RenewalDate', 'ExpirationDate', 'pyRenewalDate'], 'N/A'),
     coveredAsset: text(row, ['coveredAsset', 'CoveredAsset', 'PolicyPlan', 'Asset', 'pyCoveredAsset'], 'Customer policy'),
-    deductible: numberText(row.CoverageAmount ?? row.deductible ?? row.Deductible ?? row.pyDeductible)
+    deductible: numberText(row.CoverageAmount ?? row.deductible ?? row.Deductible ?? row.pyDeductible),
+    documentURL: text(row, ['DocumentURL', 'documentURL', 'DocumentUrl', 'documentUrl', 'PolicyDocumentURL', 'documentURL']),
+    documentId: text(row, ['DocumentID', 'documentID', 'DocumentId', 'documentId']) || extractDocumentIdFromUrl(text(row, ['DocumentURL', 'documentURL', 'DocumentUrl', 'documentUrl']))
   }));
+
+function extractDocumentIdFromUrl(url?: string): string {
+  if (!url) return '';
+  try {
+    const u = new URL(url);
+    const parts = u.pathname.split('/').filter(Boolean);
+    return parts[parts.length - 1] || url;
+  } catch {
+    return url;
+  }
+}
 
 const mapClaims = (rows: AnyRecord[]): ClaimSummary[] =>
   rows.map((row, index) => ({

@@ -12,3 +12,4 @@ yarn-error.log*
 vite-dev.*.log
 .vite
 webapp-logs
+.claude/
