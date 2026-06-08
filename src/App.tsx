@@ -10,6 +10,7 @@ import { LoginPage } from './pages/LoginPage';
 import { PoliciesPage } from './pages/PoliciesPage';
 import { ServicesPage } from './pages/ServicesPage';
 import { loginWithPega } from './services/authService';
+import { installPegaRenderDiagnostics } from './services/pegaRenderDiagnostics';
 import {
   buildCustomerCaseContent,
   createDxClient,
@@ -17,7 +18,7 @@ import {
   loadCustomerPortalSnapshot
 } from './services/portalDataService';
 import { useConstellation } from './hooks/useConstellation';
-import { openAssignmentInConstellation } from './lib/constellation';
+import { createCaseInConstellation } from './lib/constellation';
 import type { PegaToken } from './types/pega';
 import type { ClaimCaseOption, PolicySummary, PortalTab, ServiceRequestSummary } from './types/portal';
 
@@ -35,19 +36,6 @@ const tabFromPath = (pathname: string): PortalTab => {
   return 'dashboard';
 };
 
-const getCreatedAssignmentId = (response: unknown) => {
-  const root = response && typeof response === 'object' ? (response as Record<string, any>) : {};
-  const data = root.data && typeof root.data === 'object' ? root.data : {};
-  const caseInfo = data.caseInfo && typeof data.caseInfo === 'object' ? data.caseInfo : {};
-  const candidates = [
-    root.nextAssignmentInfo,
-    ...(Array.isArray(data.assignments) ? data.assignments : []),
-    ...(Array.isArray(caseInfo.assignments) ? caseInfo.assignments : [])
-  ].filter(Boolean);
-  const assignment = candidates.find((item) => item?.ID || item?.id || item?.assignmentID);
-  return assignment?.ID || assignment?.id || assignment?.assignmentID || root.assignmentID || root.ID;
-};
-
 const getPegaAuthHeader = (token?: PegaToken) => {
   if (!token?.accessToken) return null;
   return `${token.tokenType || 'Bearer'} ${token.accessToken}`;
@@ -60,6 +48,7 @@ function App() {
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState(() => getPortalSnapshot());
   const [toast, setToast] = useState<string | null>(null);
+  const [pegaRenderError, setPegaRenderError] = useState<string | null>(null);
   const [startingServiceId, setStartingServiceId] = useState<string | null>(null);
   const [activeAssignment, setActiveAssignment] = useState<{ assignmentID: string } | null>(null);
   const navigate = useNavigate();
@@ -68,6 +57,10 @@ function App() {
   const pegaConfigured = pegaConfig !== null;
   const isPegaReady = useConstellation(isAuthenticated && pegaConfigured);
   const activeTab = tabFromPath(location.pathname);
+
+  useEffect(() => {
+    return installPegaRenderDiagnostics(setPegaRenderError);
+  }, []);
 
   const runPegaAction = async (action: () => Promise<unknown>, successMessage: string) => {
     if (!pegaConfigured) {
@@ -119,49 +112,42 @@ function App() {
     }
 
     const PCore = window.PCore;
-    if (!isPegaReady || !PCore?.getMashupApi) {
+    if (!isPegaReady || !PCore?.getBootstrapUtils?.()?.getCaseApi) {
       setToast('Pega Constellation runtime is still loading. Try again in a moment.');
       return;
     }
 
     const caseTypeId = request.id === 'srv-address' ? pegaConfig?.caseTypes.changeAddress || request.caseTypeId : request.caseTypeId;
-    const target = PCore.getConstants().APP.APP || 'primary';
-    const options = { containerName: 'primary', displayMode: 'workarea' };
 
     setStartingServiceId(request.id);
     setActiveAssignment({ assignmentID: 'NEW_CASE' });
+    setPegaRenderError(null);
 
     void (async () => {
       try {
-        const client = createDxClient(authToken);
-        if (!client || !pegaConfig || !customerId) throw new Error('Customer ID is not available for this Pega request.');
-
-        const createResponse = await client.createCase(
-          caseTypeId,
-          request.id === 'srv-address'
-            ? {}
-            : buildCustomerCaseContent(pegaConfig, customerId, {
-                requestType: request.title,
-                source: 'GetInsured portal'
-              }),
-          request.id === 'srv-address' ? { viewType: 'page', processID: 'pyStartCase' } : {}
-        );
-        const assignmentId = getCreatedAssignmentId(createResponse);
-        console.log('[Pega DX] createCase response', createResponse);
-        console.log('[Pega DX] assignment selected for openAssignment', assignmentId);
-
         const authHeader = getPegaAuthHeader(authToken);
         if (authHeader) {
           sdkSetAuthHeader(authHeader);
         }
 
-        if (assignmentId) {
-          setActiveAssignment({ assignmentID: assignmentId });
-          await openAssignmentInConstellation(assignmentId);
-        } else {
-          PCore.getMashupApi().createCase(caseTypeId, target, options);
+        if (request.id === 'srv-address') {
+          await createCaseInConstellation(caseTypeId);
+          setToast(`${request.title} case started in Pega.`);
+          return;
         }
 
+        const client = createDxClient(authToken);
+        if (!client || !pegaConfig || !customerId) throw new Error('Customer ID is not available for this Pega request.');
+
+        await client.createCase(
+          caseTypeId,
+          buildCustomerCaseContent(pegaConfig, customerId, {
+            requestType: request.title,
+            source: 'GetInsured portal'
+          })
+        );
+
+        setActiveAssignment(null);
         setToast(`${request.title} case started in Pega.`);
       } catch (error) {
         setActiveAssignment(null);
@@ -323,6 +309,23 @@ function App() {
           {toast}
         </Alert>
       </Snackbar>
+
+      {pegaRenderError ? (
+        <Alert
+          severity="error"
+          onClose={() => setPegaRenderError(null)}
+          sx={{
+            bottom: 88,
+            left: 24,
+            maxWidth: 760,
+            position: 'fixed',
+            whiteSpace: 'pre-wrap',
+            zIndex: 1800
+          }}
+        >
+          {pegaRenderError}
+        </Alert>
+      ) : null}
 
       <div id="pega-root" className="pega-workarea" />
     </>

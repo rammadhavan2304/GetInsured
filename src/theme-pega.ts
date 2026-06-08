@@ -1,4 +1,4 @@
-import { createTheme } from '@mui/material/styles';
+import { createTheme } from '@pega/react-sdk-components/node_modules/@mui/material/styles';
 
 export const pegaTheme = createTheme({
   palette: {
@@ -15,5 +15,18 @@ export const pegaTheme = createTheme({
   },
   shape: {
     borderRadius: 6
+  },
+  actionButtons: {
+    primary: {
+      backgroundColor: '#0a6f8f',
+      color: '#ffffff'
+    },
+    secondary: {
+      backgroundColor: '#e8f1dd',
+      color: '#26391a'
+    }
+  },
+  embedded: {
+    resolutionTextColor: '#4d5f68'
   }
-});
+} as any);

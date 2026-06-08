@@ -165,7 +165,10 @@ export class PegaDxClient {
     content: Record<string, unknown> = {},
     options: { viewType?: PegaViewType; pageName?: string; processID?: string } = {}
   ) {
-    const { processID, ...queryOptions } = options;
+    const { processID, ...queryOptions } = {
+      ...options,
+      ...(options.viewType === 'page' && !options.pageName ? { pageName: 'pyDetails' } : {})
+    };
 
     return this.request<PegaCaseResponse>(this.withQuery('/cases', queryOptions), {
       method: 'POST',

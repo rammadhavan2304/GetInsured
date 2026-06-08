@@ -1,5 +1,6 @@
-import CssBaseline from '@mui/material/CssBaseline';
-import { ThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@pega/react-sdk-components/node_modules/@mui/material/CssBaseline';
+import { ThemeProvider } from '@pega/react-sdk-components/node_modules/@mui/material/styles';
+import { ThemeProvider as StylesThemeProvider } from '@mui/styles';
 import createPConnectComponent from '@pega/react-sdk-components/lib/bridge/react_pconnect';
 import StoreContext from '@pega/react-sdk-components/lib/bridge/Context/StoreContext';
 import { getSdkComponentMap } from '@pega/react-sdk-components/lib/bridge/helpers/sdk_component_map';
@@ -8,8 +9,6 @@ import { createRoot } from 'react-dom/client';
 import type { Root } from 'react-dom/client';
 import localSdkComponentMap from '../../sdk-local-component-map';
 import { pegaTheme } from '../theme-pega';
-
-declare const myLoadMashup: (containerId: string, applyMashupStyles?: boolean) => void;
 
 const reactRoots = new WeakMap<Element, Root>();
 
@@ -31,10 +30,12 @@ function RootComponent(props: Record<string, unknown>) {
 
   return (
     <StoreContext.Provider value={{ store: PCore.getStore(), displayOnlyFA: true }}>
-      <ThemeProvider theme={pegaTheme}>
-        <CssBaseline />
-        <PegaConnect {...props} />
-      </ThemeProvider>
+      <StylesThemeProvider theme={pegaTheme}>
+        <ThemeProvider theme={pegaTheme}>
+          <CssBaseline />
+          <PegaConnect {...props} />
+        </ThemeProvider>
+      </StylesThemeProvider>
     </StoreContext.Provider>
   );
 }
@@ -61,14 +62,12 @@ export function startMashup() {
     compareSdkPCoreVersions();
     getSdkComponentMap(localSdkComponentMap).then(() => initialRender(renderObj));
   });
-
-  myLoadMashup('pega-root', false);
 }
 
-export async function openAssignmentInConstellation(assignmentId: string) {
+export async function createCaseInConstellation(caseTypeId: string) {
   const PCore = window.PCore;
   if (!PCore?.getBootstrapUtils?.()?.getCaseApi) {
-    throw new Error('Pega Constellation assignment API is not ready.');
+    throw new Error('Pega Constellation case API is not ready.');
   }
 
   await PCore.getBootstrapUtils().loadRootComponent('pega-root', rootContainerWithHybrid, [
@@ -81,8 +80,10 @@ export async function openAssignmentInConstellation(assignmentId: string) {
   await PCore
     .getBootstrapUtils()
     .getCaseApi()
-    .openAssignment(assignmentId, PCore.getConstants().APP.APP, PCore.getConstants().PRIMARY, {
-      skipFlowNameCheck: true
+    .createCase(caseTypeId, PCore.getConstants().APP.APP, PCore.getConstants().PRIMARY, {
+      pageName: PCore.getConstants().PY_DETAILS || 'pyDetails',
+      renderInline: true,
+      viewType: 'page'
     });
 
   PCore.getCoexistenceManager()?.getEventUtils?.().publishConstellationLoadedEvent?.();

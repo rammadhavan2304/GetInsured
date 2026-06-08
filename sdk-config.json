@@ -13,8 +13,8 @@
     "clientSecret": "95C4147C71285C9A903C17F531B2F418"
   },
   "serverConfig": {
-    "apiServer": "/prweb/PRAuth",
-    "infinityRestServerUrl": "/prweb/PRAuth",
+    "apiServer": "https://kfvow8ae.pegace.net/prweb/PRAuth",
+    "infinityRestServerUrl": "https://kfvow8ae.pegace.net/prweb/PRAuth",
     "appAlias": "insurehub",
     "sdkContentServerUrl": "",
     "appPortal": "",
