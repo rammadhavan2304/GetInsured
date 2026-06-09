@@ -62,68 +62,81 @@ export function PolicyAIChat({ policy, authToken, customerId, onClose }: PolicyA
     setIsLoading(true);
     setError(null);
 
-    // We pass the full document URL because the Azure agent (via MCP from Pega) needs it
-    // to fetch the private blob content. The filename is also provided as fallback DocumentID.
     const fullDocumentUrl = policy.documentURL || '';
     const documentId = policy.documentId || (fullDocumentUrl ? fullDocumentUrl.split('/').pop() : '');
 
     const context: Record<string, unknown> = {
-      // Keys for the Pega agent (DocumentID + Question as you described)
-      DocumentID: documentId || fullDocumentUrl,   // use filename if available, else full URL
-      Question: question,                          // explicitly pass the current question as "Question"
-
-      // For the Azure side (via MCP) - full URL to fetch the blob content
-      document_url: fullDocumentUrl,
-      DocumentURL: fullDocumentUrl,
-
-      // Other useful context
-      document_id: documentId,
-      policy_id: policy.policyNumber,
-      policy_name: policy.title,
-      policy_plan: (policy as any).PolicyPlan || (policy as any).policyPlan,
-      customer_id: customerId,
-      coverage_amount: (policy as any).CoverageAmount,
+      CustomerID: customerId || '',
+      DocumentID: documentId || fullDocumentUrl,
+      ChatQuestionPrompt: question,
     };
 
     try {
-      console.log('[PolicyAIChat] Calling agent', {
+      console.log('[PolicyAIChat] Sending to agent with context', {
         agentId: AGENT_ID,
         isNewConversation: !conversationId,
-        question,
+        content: question,
         context
       });
 
+      let assistantText = '';
+
       if (!conversationId) {
-        // Start new conversation with rich context
-        const response = await dxClient.initiateAgentConversation(AGENT_ID, question, context);
+        // First, initiate the conversation to get a convo ID (matches the flow that worked in direct testing)
+        const initResponse = await dxClient.initiateAgentConversation(AGENT_ID, '', context);
+        console.log('[PolicyAIChat] initiateAgentConversation raw response:', initResponse);
+
         const newConvId = 
-          response?.conversationID || 
-          response?.ID || 
-          response?.conversationId || 
-          (response as any)?.data?.conversationID || '';
+          initResponse?.conversationID || 
+          initResponse?.ID || 
+          initResponse?.conversationId || 
+          (initResponse as any)?.data?.conversationID || '';
 
         if (newConvId) {
           setConversationId(newConvId);
         }
 
-        // Try to extract the first assistant reply from various possible shapes
-        const convData = newConvId ? await dxClient.getAgentConversation(AGENT_ID, newConvId) : response;
-        
-        const assistantText = extractAssistantReply(convData, question);
+        // Then send the actual question using the streaming PATCH (this is where the SSE response with the answer comes)
+        if (newConvId) {
+          const docRef = documentId || fullDocumentUrl;
+          const requestWithDoc = docRef 
+            ? `${question}\n\n[Document Reference - ID: ${documentId || ''} | URL: ${fullDocumentUrl}]` 
+            : question;
 
+          const streamResult = await dxClient.sendMessageToAgentConversationWithStream(
+            AGENT_ID,
+            newConvId,
+            requestWithDoc,
+            context
+          );
+          assistantText = streamResult.response || '';
+        }
+      } else {
+        // Follow-up: directly send via streaming
+        const docRef = documentId || fullDocumentUrl;  // re-compute stable doc ref from closure or props
+        const requestWithDoc = docRef 
+          ? `${question}\n\n[Document Reference - ID: ${documentId || ''} | URL: ${fullDocumentUrl}]` 
+          : question;
+
+        const streamResult = await dxClient.sendMessageToAgentConversationWithStream(
+          AGENT_ID,
+          conversationId,
+          requestWithDoc,
+          context
+        );
+        assistantText = streamResult.response || '';
+      }
+
+      if (assistantText) {
         setMessages((prev) => [
           ...prev, 
           { role: 'assistant', content: assistantText }
         ]);
       } else {
-        // Continue existing conversation - re-pass context (DocumentID etc.) because the agent needs it for grounding on every turn
-        await dxClient.sendMessageToAgentConversation(AGENT_ID, conversationId, question, context);
-        const convData = await dxClient.getAgentConversation(AGENT_ID, conversationId);
-        
-        const assistantText = extractAssistantReply(convData, question);
+        // Fallback if no text came back from stream
         setMessages((prev) => [
           ...prev, 
-          { role: 'assistant', content: assistantText }
+          { role: 'assistant', content: "I received your question but didn't get a response from the agent yet. Please try again." }
         ]);
       }
     } catch (e) {
@@ -142,7 +155,7 @@ export function PolicyAIChat({ policy, authToken, customerId, onClose }: PolicyA
         ...prev,
         { 
           role: 'assistant', 
-          content: "I'm sorry, I wasn't able to get an answer from the document agent. Please try again in a moment." 
+          content: "I'm sorry, I wasn't able to get a response from the agent. Please try again in a moment." 
         }
       ]);
     } finally {
@@ -152,9 +165,9 @@ export function PolicyAIChat({ policy, authToken, customerId, onClose }: PolicyA
 
   // Helper to pull the assistant's reply from different possible API response shapes
   function extractAssistantReply(data: any, fallbackQuestion: string): string {
-    if (!data) return "I've received your question about the policy document. One moment while I review it...";
+    if (!data) return "I've received your question. One moment while I review it...";
 
-    // Common shapes from AgentX / A2A responses
+    // Common shapes from agent responses (A2A / DX API)
     const possible =
       data?.lastResponse ||
       data?.response ||
@@ -174,7 +187,38 @@ export function PolicyAIChat({ policy, authToken, customerId, onClose }: PolicyA
       if (lastAssistant?.content) return lastAssistant.content;
     }
 
-    return `Thanks for asking about your ${policy.title}. I'm looking into the document for you.`;
+    return `Thanks for asking. I'm looking into it for you.`;
+  }
+
+  // Poll the conversation until we get a real assistant response (the agent processing can be async)
+  async function waitForAgentResponse(agentId: string, convId: string, originalQuestion: string, maxAttempts = 20, delayMs = 1500) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const data = await dxClient.getAgentConversation(agentId, convId);
+        console.log(`[PolicyAIChat] Poll attempt ${attempt + 1} raw data for conv ${convId}:`, data);
+
+        const text = extractAssistantReply(data, originalQuestion);
+
+        // Heuristic: we got a substantial answer (not the default waiting text)
+        const lower = (text || '').toLowerCase();
+        if (text && text.trim().length > 15 && 
+            !lower.includes('one moment') && 
+            !lower.includes('review it') && 
+            !lower.includes('looking into')) {
+          console.log('[PolicyAIChat] Got usable assistant response on poll', attempt + 1);
+          return data;
+        }
+      } catch (e) {
+        console.warn('[PolicyAIChat] Poll attempt failed', e);
+      }
+
+      // Wait before next poll
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+
+    // Return whatever we have on the last attempt
+    console.log('[PolicyAIChat] Polling exhausted, returning last data');
+    return await dxClient.getAgentConversation(agentId, convId);
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -352,7 +396,7 @@ export function PolicyAIChat({ policy, authToken, customerId, onClose }: PolicyA
               alignItems: 'center',
               gap: 1
             }}>
-              <Typography variant="body2" color="text.secondary">Reading your policy document</Typography>
+              <Typography variant="body2" color="text.secondary">Thinking...</Typography>
               <CircularProgress size={14} thickness={6} />
             </Paper>
           </Stack>

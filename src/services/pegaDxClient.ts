@@ -222,9 +222,9 @@ export class PegaDxClient {
     });
   }
 
-  // === AI Agent (A2A / AgentX) support for policy document Q&A ===
-  // Using the standard DX application/v2 surface for /ai-agents (as documented in Pega DX APIs for Constellation).
-  // Your agent card is at agent2agent/v1 for discovery, but conversation calls typically go through application/v2/ai-agents.
+  // === AI Agent (A2A / AgentX) support ===
+  // Using the standard DX application/v2 surface for /ai-agents.
+  // Context (CustomerID, DocumentID, ChatQuestionPrompt) is passed with each call.
 
   async initiateAgentConversation(
     agentId: string,
@@ -260,5 +260,86 @@ export class PegaDxClient {
   async getAgentConversation(agentId: string, conversationId: string) {
     const path = `/ai-agents/${encodeURIComponent(agentId)}/conversations/${encodeURIComponent(conversationId)}`;
     return this.request(path);
+  }
+
+  /**
+   * Send a message using the streaming (SSE) response that this agent supports.
+   * Matches the payload and event stream format seen in direct Pega testing.
+   */
+  async sendMessageToAgentConversationWithStream(
+    agentId: string,
+    conversationId: string,
+    requestText: string,
+    context: Record<string, unknown> = {}
+  ): Promise<{ response: string }> {
+    const path = `/ai-agents/${encodeURIComponent(agentId)}/conversations/${encodeURIComponent(conversationId)}`;
+    const token = await this.authenticate();
+    const base = this.getApplicationApiBase();
+
+    const res = await fetch(`${base}${path}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        request: requestText,
+        context,
+        capabilities: {
+          stream: { isEnabled: true }
+        }
+      })
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Agent stream request failed with ${res.status}: ${text.slice(0, 300)}`);
+    }
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let accumulated = '';
+    let finalResponse = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('data:')) {
+          const dataStr = trimmed.substring(5).trim();
+          if (!dataStr) continue;
+
+          try {
+            const data = JSON.parse(dataStr);
+            if (typeof data.content === 'string') {
+              accumulated += data.content;
+            }
+            if (data.response && typeof data.response === 'string') {
+              finalResponse = data.response;
+            }
+          } catch {
+            // The very last payload is sometimes a raw JSON (not under event:)
+            if (dataStr.includes('"response"')) {
+              try {
+                const parsed = JSON.parse(dataStr);
+                if (parsed.response) finalResponse = parsed.response;
+              } catch {}
+            }
+          }
+        }
+      }
+    }
+
+    const responseText = finalResponse || accumulated;
+    return { response: responseText };
   }
 }

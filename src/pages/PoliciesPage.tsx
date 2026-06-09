@@ -46,23 +46,7 @@ export function PoliciesPage({ policies, pegaConfigured, onPolicyChange, onAskPo
                 <Stack spacing={2}>
                   <Box className="card-title-row">
                     <Box className="stat-icon">{icons[policy.type]}</Box>
-                    <Stack direction="row" spacing={0.75} alignItems="center">
-                      <Chip label={policy.status} color={policy.status === 'Active' ? 'success' : 'warning'} size="small" />
-                      {policy.documentURL && (
-                        <Chip 
-                          label="AI" 
-                          size="small" 
-                          color="primary" 
-                          variant="outlined"
-                          sx={{ 
-                            height: 20, 
-                            fontSize: '0.65rem', 
-                            fontWeight: 600,
-                            '& .MuiChip-label': { px: 0.75 }
-                          }} 
-                        />
-                      )}
-                    </Stack>
+                    <Chip label={policy.status} color={policy.status === 'Active' ? 'success' : 'warning'} size="small" />
                   </Box>
                   <Box>
                     <Typography variant="h6">{policy.title}</Typography>
@@ -89,37 +73,32 @@ export function PoliciesPage({ policies, pegaConfigured, onPolicyChange, onAskPo
                   </Button>
                 </Stack>
 
-                {/* Chat Bubble - subtle until you hover the card */}
+                {/* Chat Bubble - lower right, prominent */}
                 {onAskPolicyQuestion && pegaConfigured && (
-                  <Tooltip title="Ask AI about this policy" arrow placement="left">
+                  <Tooltip title="Ask anything about this policy?" arrow placement="top">
                     <IconButton
-                      size="small"
+                      size="medium"
                       onClick={() => onAskPolicyQuestion(policy)}
                       sx={{
                         position: 'absolute',
-                        top: 10,
-                        right: 10,
-                        width: 32,
-                        height: 32,
+                        bottom: 16,
+                        right: 16,
+                        width: 44,
+                        height: 44,
                         bgcolor: 'primary.main',
                         color: 'common.white',
-                        boxShadow: 1,
-                        opacity: 0.25,
-                        transform: 'scale(0.85)',
-                        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                        // Reveal + pop in when hovering the card
-                        '.MuiCard-root:hover &': {
-                          opacity: 0.95,
-                          transform: 'scale(1)',
-                        },
+                        boxShadow: 4,
+                        opacity: 0.95,
+                        transition: 'all 0.2s ease',
+                        zIndex: 1,
                         '&:hover': {
                           bgcolor: 'primary.dark',
                           transform: 'scale(1.1)',
-                          boxShadow: 3,
+                          boxShadow: 8,
                         },
                       }}
                     >
-                      <MessageCircle size={16} />
+                      <MessageCircle size={20} />
                     </IconButton>
                   </Tooltip>
                 )}
