@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">GetInsured</string>
+    <string name="title_activity_main">GetInsured</string>
+    <string name="package_name">com.getinsured.app</string>
+    <string name="custom_url_scheme">com.getinsured.app</string>
+</resources>

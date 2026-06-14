@@ -5,6 +5,7 @@ import {
 } from '@mui/material';
 import { Send, X, ExternalLink, Bot, User } from 'lucide-react';
 import { createDxClient } from '../services/portalDataService';
+import type { PegaDxClient } from '../services/pegaDxClient';
 import type { PolicySummary } from '../types/portal';
 import type { PegaToken } from '../types/pega';
 
@@ -191,10 +192,17 @@ export function PolicyAIChat({ policy, authToken, customerId, onClose }: PolicyA
   }
 
   // Poll the conversation until we get a real assistant response (the agent processing can be async)
-  async function waitForAgentResponse(agentId: string, convId: string, originalQuestion: string, maxAttempts = 20, delayMs = 1500) {
+  async function waitForAgentResponse(
+    client: PegaDxClient,
+    agentId: string,
+    convId: string,
+    originalQuestion: string,
+    maxAttempts = 20,
+    delayMs = 1500
+  ) {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
-        const data = await dxClient.getAgentConversation(agentId, convId);
+        const data = await client.getAgentConversation(agentId, convId);
         console.log(`[PolicyAIChat] Poll attempt ${attempt + 1} raw data for conv ${convId}:`, data);
 
         const text = extractAssistantReply(data, originalQuestion);
@@ -218,7 +226,7 @@ export function PolicyAIChat({ policy, authToken, customerId, onClose }: PolicyA
 
     // Return whatever we have on the last attempt
     console.log('[PolicyAIChat] Polling exhausted, returning last data');
-    return await dxClient.getAgentConversation(agentId, convId);
+    return await client.getAgentConversation(agentId, convId);
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

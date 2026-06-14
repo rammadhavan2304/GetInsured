@@ -210,8 +210,9 @@ export const buildCustomerParameters = (config: PegaRuntimeConfig, customerId: s
 
 export const buildCustomerCaseContent = (config: PegaRuntimeConfig, customerId: string, content: AnyRecord = {}) => ({
   ...content,
+  IsSelfServe: true,
+  CustomerID: customerId,
   [config.customerIdParam]: customerId,
-  OperatorID: customerId
 });
 
 export const getPortalSnapshot = (customerId?: string): PortalSnapshot => ({

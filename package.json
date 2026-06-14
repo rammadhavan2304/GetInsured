@@ -8,6 +8,10 @@
     "start-dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
+    "cap:sync": "cap sync",
+    "android:sync": "npm run build && cap sync android",
+    "android:open": "cap open android",
+    "android:apk": "npm run build && cap sync android && cd android && .\\gradlew.bat assembleDebug",
     "authenticate": "dx-component-builder-sdk authenticate",
     "create": "dx-component-builder-sdk create",
     "buildComponent": "dx-component-builder-sdk buildComponent",
@@ -15,6 +19,8 @@
     "list": "dx-component-builder-sdk list"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/core": "^8.4.0",
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
     "@mui/icons-material": "^5.16.7",
@@ -30,6 +36,7 @@
     "react-router": "^7.8.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.4.0",
     "@pega/dx-component-builder-sdk": "~25.1.14",
     "@pega/pcore-pconnect-typedefs": "^4.1.0",
     "@playwright/test": "^1.60.0",

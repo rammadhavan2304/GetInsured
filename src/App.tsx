@@ -132,14 +132,22 @@ function App() {
           sdkSetAuthHeader(authHeader);
         }
 
+        if (!pegaConfig || !customerId) throw new Error('Customer ID is not available for this Pega request.');
+
         if (request.id === 'srv-address') {
-          await createCaseInConstellation(caseTypeId);
+          await createCaseInConstellation(
+            caseTypeId,
+            buildCustomerCaseContent(pegaConfig, customerId, {
+              requestType: request.title,
+              source: 'GetInsured portal'
+            })
+          );
           setToast(`${request.title} case started in Pega.`);
           return;
         }
 
         const client = createDxClient(authToken);
-        if (!client || !pegaConfig || !customerId) throw new Error('Customer ID is not available for this Pega request.');
+        if (!client) throw new Error('Pega DX API is not configured for this request.');
 
         await client.createCase(
           caseTypeId,

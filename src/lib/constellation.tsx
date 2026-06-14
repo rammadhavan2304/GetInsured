@@ -64,7 +64,7 @@ export function startMashup() {
   });
 }
 
-export async function createCaseInConstellation(caseTypeId: string) {
+export async function createCaseInConstellation(caseTypeId: string, content: Record<string, unknown> = {}) {
   const PCore = window.PCore;
   if (!PCore?.getBootstrapUtils?.()?.getCaseApi) {
     throw new Error('Pega Constellation case API is not ready.');
@@ -81,6 +81,7 @@ export async function createCaseInConstellation(caseTypeId: string) {
     .getBootstrapUtils()
     .getCaseApi()
     .createCase(caseTypeId, PCore.getConstants().APP.APP, PCore.getConstants().PRIMARY, {
+      content,
       pageName: PCore.getConstants().PY_DETAILS || 'pyDetails',
       renderInline: true,
       viewType: 'page'
