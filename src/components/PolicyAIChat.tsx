@@ -23,6 +23,31 @@ interface PolicyAIChatProps {
 
 const AGENT_ID = 'IH-INSURE-WORK-POLICYCLARIFICATION!POLICYQUESTION';
 
+function buildAgentRequest(question: string, customerId: string | null | undefined, policy: PolicySummary) {
+  const fullDocumentUrl = policy.documentURL || '';
+  const documentId = policy.documentId || (fullDocumentUrl ? fullDocumentUrl.split('/').pop() : '');
+  const parameters = {
+    CustomerID: customerId || '',
+    Document: fullDocumentUrl,
+    DocumentID: documentId || fullDocumentUrl,
+    DocumentURL: fullDocumentUrl,
+    ChatQuestionPrompt: question,
+  };
+
+  const requestText = [
+    question,
+    '',
+    'Use the following tool parameters for this policy question:',
+    `CustomerID: ${parameters.CustomerID}`,
+    `Document: ${parameters.Document}`,
+    `DocumentID: ${parameters.DocumentID}`,
+    `DocumentURL: ${parameters.DocumentURL}`,
+    `ChatQuestionPrompt: ${parameters.ChatQuestionPrompt}`,
+  ].join('\n');
+
+  return { requestText, parameters };
+}
+
 export function PolicyAIChat({ policy, authToken, customerId, onClose }: PolicyAIChatProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -63,28 +88,21 @@ export function PolicyAIChat({ policy, authToken, customerId, onClose }: PolicyA
     setIsLoading(true);
     setError(null);
 
-    const fullDocumentUrl = policy.documentURL || '';
-    const documentId = policy.documentId || (fullDocumentUrl ? fullDocumentUrl.split('/').pop() : '');
-
-    const context: Record<string, unknown> = {
-      CustomerID: customerId || '',
-      DocumentID: documentId || fullDocumentUrl,
-      ChatQuestionPrompt: question,
-    };
+    const { requestText, parameters } = buildAgentRequest(question, customerId, policy);
 
     try {
-      console.log('[PolicyAIChat] Sending to agent with context', {
+      console.log('[PolicyAIChat] Sending to agent with request parameters', {
         agentId: AGENT_ID,
         isNewConversation: !conversationId,
         content: question,
-        context
+        parameters
       });
 
       let assistantText = '';
 
       if (!conversationId) {
         // First, initiate the conversation to get a convo ID (matches the flow that worked in direct testing)
-        const initResponse = await dxClient.initiateAgentConversation(AGENT_ID, '', context);
+        const initResponse = await dxClient.initiateAgentConversation(AGENT_ID);
         console.log('[PolicyAIChat] initiateAgentConversation raw response:', initResponse);
 
         const newConvId = 
@@ -99,31 +117,19 @@ export function PolicyAIChat({ policy, authToken, customerId, onClose }: PolicyA
 
         // Then send the actual question using the streaming PATCH (this is where the SSE response with the answer comes)
         if (newConvId) {
-          const docRef = documentId || fullDocumentUrl;
-          const requestWithDoc = docRef 
-            ? `${question}\n\n[Document Reference - ID: ${documentId || ''} | URL: ${fullDocumentUrl}]` 
-            : question;
-
           const streamResult = await dxClient.sendMessageToAgentConversationWithStream(
             AGENT_ID,
             newConvId,
-            requestWithDoc,
-            context
+            requestText
           );
           assistantText = streamResult.response || '';
         }
       } else {
         // Follow-up: directly send via streaming
-        const docRef = documentId || fullDocumentUrl;  // re-compute stable doc ref from closure or props
-        const requestWithDoc = docRef 
-          ? `${question}\n\n[Document Reference - ID: ${documentId || ''} | URL: ${fullDocumentUrl}]` 
-          : question;
-
         const streamResult = await dxClient.sendMessageToAgentConversationWithStream(
           AGENT_ID,
           conversationId,
-          requestWithDoc,
-          context
+          requestText
         );
         assistantText = streamResult.response || '';
       }
@@ -145,7 +151,7 @@ export function PolicyAIChat({ policy, authToken, customerId, onClose }: PolicyA
       console.error('[PolicyAIChat] Agent call failed', {
         agentId: AGENT_ID,
         question,
-        context,
+        parameters,
         error: realError,
         conversationId
       });

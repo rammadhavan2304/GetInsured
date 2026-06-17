@@ -1,26 +1,26 @@
 import { Box, Button, Card, CardContent, Chip, Grid, Stack, Typography } from '@mui/material';
 import { AlertCircle, ArrowRight, BadgeDollarSign, ClipboardList, ShieldCheck, Wrench } from 'lucide-react';
 import { ConfigNotice } from '../components/ConfigNotice';
-import type { ClaimSummary, DashboardSummary, PolicySummary, ServiceRequestSummary, UserProfile } from '../types/portal';
+import type { DashboardSummary, PendingTaskSummary, PolicySummary, UserProfile } from '../types/portal';
 
 interface DashboardPageProps {
   user: UserProfile;
   summary: DashboardSummary;
   policies: PolicySummary[];
-  claims: ClaimSummary[];
-  serviceRequests: ServiceRequestSummary[];
+  pendingTasks: PendingTaskSummary[];
   pegaConfigured: boolean;
   onNavigate: (tab: 'policies' | 'claims' | 'services') => void;
+  onOpenPendingTask: (task: PendingTaskSummary) => void;
 }
 
 export function DashboardPage({
   user,
   summary,
   policies,
-  claims,
-  serviceRequests,
+  pendingTasks,
   pegaConfigured,
-  onNavigate
+  onNavigate,
+  onOpenPendingTask
 }: DashboardPageProps) {
   const stats = [
     { label: 'Active policies', value: summary.activePolicies, icon: <ShieldCheck size={22} /> },
@@ -70,7 +70,7 @@ export function DashboardPage({
                     <Box>
                       <Typography fontWeight={800}>{policy.title}</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {policy.policyNumber} · {policy.coveredAsset}
+                        {policy.policyNumber} - {policy.coveredAsset}
                       </Typography>
                     </Box>
                     <Chip label={policy.status} size="small" color={policy.status === 'Active' ? 'success' : 'warning'} />
@@ -85,30 +85,35 @@ export function DashboardPage({
           <Card>
             <CardContent>
               <Box className="section-header">
-                <Typography variant="h6">Needs attention</Typography>
+                <Typography variant="h6">Pending tasks</Typography>
                 <Wrench size={20} />
               </Box>
               <Stack spacing={1.5}>
-                {claims
-                  .filter((claim) => claim.status === 'Action needed')
-                  .map((claim) => (
-                    <Box className="attention-row" key={claim.id}>
-                      <Typography fontWeight={800}>{claim.title}</Typography>
+                {pendingTasks.length > 0 ? (
+                  pendingTasks.map((task) => (
+                    <Box
+                      className="attention-row"
+                      key={task.id}
+                      onClick={() => onOpenPendingTask(task)}
+                      sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'rgba(8, 109, 138, 0.06)' } }}
+                    >
+                      <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+                        <Typography fontWeight={800}>{task.title}</Typography>
+                        <Chip label={task.status} color="warning" size="small" />
+                      </Stack>
                       <Typography variant="body2" color="text.secondary">
-                        {claim.claimNumber} · {claim.lastUpdated}
+                        {task.caseId} - {task.caseTypeId}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Updated {task.lastUpdated}
                       </Typography>
                     </Box>
-                  ))}
-                {serviceRequests
-                  .filter((request) => request.status !== 'Available')
-                  .map((request) => (
-                    <Box className="attention-row" key={request.id}>
-                      <Typography fontWeight={800}>{request.title}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {request.description}
-                      </Typography>
-                    </Box>
-                  ))}
+                  ))
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    No cases are waiting on customer action.
+                  </Typography>
+                )}
               </Stack>
             </CardContent>
           </Card>

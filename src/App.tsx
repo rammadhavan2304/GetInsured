@@ -1,6 +1,6 @@
 import { Alert, Dialog, DialogContent, Snackbar } from '@mui/material';
 import { sdkSetAuthHeader } from '@pega/auth/lib/sdk-auth-manager';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { AppShell } from './components/AppShell';
 import { PolicyAIChat } from './components/PolicyAIChat';
@@ -16,12 +16,14 @@ import {
   buildCustomerCaseContent,
   createDxClient,
   getPortalSnapshot,
+  isCustomerActionStatus,
+  loadPendingTasksFromPcore,
   loadCustomerPortalSnapshot
 } from './services/portalDataService';
 import { useConstellation } from './hooks/useConstellation';
-import { createCaseInConstellation } from './lib/constellation';
+import { createCaseInConstellation, openAssignmentInConstellation } from './lib/constellation';
 import type { PegaToken } from './types/pega';
-import type { ClaimCaseOption, PolicySummary, PortalTab, ServiceRequestSummary } from './types/portal';
+import type { ClaimCaseOption, PendingTaskSummary, PolicySummary, PortalTab, ServiceRequestSummary } from './types/portal';
 
 const tabPath: Record<PortalTab, string> = {
   dashboard: '/dashboard',
@@ -42,16 +44,52 @@ const getPegaAuthHeader = (token?: PegaToken) => {
   return `${token.tokenType || 'Bearer'} ${token.accessToken}`;
 };
 
+const SESSION_STORAGE_KEY = 'getinsured.pegaSession';
+
+interface StoredPegaSession {
+  token: PegaToken;
+  customerId: string;
+}
+
+const loadStoredSession = (): StoredPegaSession | null => {
+  try {
+    const raw = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) return null;
+
+    const session = JSON.parse(raw) as StoredPegaSession;
+    if (!session?.token?.accessToken || !session.customerId || session.token.expiresAt <= Date.now()) {
+      window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      return null;
+    }
+
+    return session;
+  } catch {
+    window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    return null;
+  }
+};
+
+const storeSession = (session: StoredPegaSession) => {
+  window.sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+};
+
+const clearStoredSession = () => {
+  window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+};
+
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authToken, setAuthToken] = useState<PegaToken | undefined>();
+  const [storedSession] = useState(() => loadStoredSession());
+  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(storedSession));
+  const [authToken, setAuthToken] = useState<PegaToken | undefined>(() => storedSession?.token);
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [customerId, setCustomerId] = useState<string | null>(null);
-  const [snapshot, setSnapshot] = useState(() => getPortalSnapshot());
+  const [customerId, setCustomerId] = useState<string | null>(() => storedSession?.customerId || null);
+  const [snapshot, setSnapshot] = useState(() => getPortalSnapshot(storedSession?.customerId));
   const [toast, setToast] = useState<string | null>(null);
   const [pegaRenderError, setPegaRenderError] = useState<string | null>(null);
   const [startingServiceId, setStartingServiceId] = useState<string | null>(null);
   const [activeAssignment, setActiveAssignment] = useState<{ assignmentID: string } | null>(null);
+  const activeAssignmentRef = useRef<{ assignmentID: string } | null>(null);
+  const assignmentTransitionSeq = useRef(0);
   const [aiPolicy, setAiPolicy] = useState<import('./types/portal').PolicySummary | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -63,6 +101,29 @@ function App() {
   useEffect(() => {
     return installPegaRenderDiagnostics(setPegaRenderError);
   }, []);
+
+  useEffect(() => {
+    activeAssignmentRef.current = activeAssignment;
+  }, [activeAssignment]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !authToken || !customerId) return;
+
+    void loadCustomerPortalSnapshot(authToken, customerId)
+      .then(setSnapshot)
+      .catch((error) => {
+        clearStoredSession();
+        setAuthToken(undefined);
+        setCustomerId(null);
+        setSnapshot(getPortalSnapshot());
+        setIsAuthenticated(false);
+        setToast(
+          error instanceof Error
+            ? `Saved Pega session could not be restored: ${error.message}`
+            : 'Saved Pega session could not be restored.'
+        );
+      });
+  }, [isAuthenticated, authToken, customerId]);
 
   const runPegaAction = async (action: () => Promise<unknown>, successMessage: string) => {
     if (!pegaConfigured) {
@@ -76,6 +137,19 @@ function App() {
     } catch (error) {
       setToast(error instanceof Error ? error.message : 'Pega action failed.');
     }
+  };
+
+  const refreshPendingTasks = async () => {
+    const pendingTasks = await loadPendingTasksFromPcore();
+    setSnapshot((current) => ({
+      ...current,
+      pendingTasks,
+      summary: {
+        ...current.summary,
+        pendingTasks: pendingTasks.length
+      }
+    }));
+    return pendingTasks;
   };
 
   const handleCreateClaim = (option: ClaimCaseOption) => {
@@ -168,6 +242,30 @@ function App() {
     })();
   };
 
+  const handleOpenPendingTask = (task: PendingTaskSummary) => {
+    const assignmentId = task.assignmentId || task.id;
+
+    if (!assignmentId) {
+      setToast('Pending task is missing an assignment id.');
+      return;
+    }
+
+    if (!isPegaReady || !window.PCore) {
+      setToast('Pega Constellation runtime is still loading. Try again in a moment.');
+      return;
+    }
+
+    setActiveAssignment({ assignmentID: assignmentId });
+    setPegaRenderError(null);
+
+    window.setTimeout(() => {
+      void openAssignmentInConstellation(assignmentId).catch((error) => {
+        setActiveAssignment(null);
+        setToast(error instanceof Error ? error.message : 'Unable to open pending task.');
+      });
+    }, 100);
+  };
+
   useEffect(() => {
     if (!isPegaReady || !window.PCore) return;
 
@@ -177,18 +275,145 @@ function App() {
       setActiveAssignment(null);
     };
 
-    const handleFinish = (event: any) => {
-      const nextAssignmentId = event?.data?.nextAssignmentID || event?.nextAssignmentID;
-      if (nextAssignmentId) {
-        setActiveAssignment({ assignmentID: nextAssignmentId });
-      } else {
+    const getEventStatus = (eventData: any) =>
+      String(
+        eventData?.pyAssignmentStatus ||
+          eventData?.pyStatusWork ||
+          eventData?.status ||
+          eventData?.caseInfo?.pyAssignmentStatus ||
+          eventData?.caseInfo?.pyStatusWork ||
+          eventData?.caseInfo?.status ||
+          eventData?.caseInfo?.assignments?.[0]?.pyAssignmentStatus ||
+          eventData?.caseInfo?.assignments?.[0]?.pyStatusWork ||
+          eventData?.caseInfo?.assignments?.[0]?.status ||
+          ''
+      );
+
+    const getEventAssignmentId = (eventData: any) =>
+      eventData?.nextAssignmentID ||
+      eventData?.assignmentID ||
+      eventData?.ID ||
+      eventData?.caseInfo?.assignments?.[0]?.ID ||
+      eventData?.caseInfo?.assignments?.[0]?.assignmentID;
+
+    const matchesAssignment = (task: PendingTaskSummary, assignmentId: string) => {
+      const normalizedAssignment = assignmentId.trim().toLowerCase();
+      return [task.assignmentId, task.id, task.caseId].some((value) => value.trim().toLowerCase() === normalizedAssignment);
+    };
+
+    const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+    const handleAssignmentTransition = (event: any, source: string) => {
+      const eventData = event?.data || event;
+      const nextAssignmentId = getEventAssignmentId(eventData);
+      const nextStatus = getEventStatus(eventData);
+      const transitionSeq = ++assignmentTransitionSeq.current;
+
+      console.log(`[Pega PCore] ${source} event`, {
+        nextAssignmentId,
+        nextStatus,
+        eventData
+      });
+
+      void (async () => {
         closeAssignment();
+        await wait(1200);
+
+        if (transitionSeq !== assignmentTransitionSeq.current) return;
+
+        const latestPendingTasks = await refreshPendingTasks().catch((error) => {
+          console.warn('[Pega PCore] Pending task refresh after assignment transition failed', error);
+          return [] as PendingTaskSummary[];
+        });
+
+        if (transitionSeq !== assignmentTransitionSeq.current) return;
+
+        if (!nextAssignmentId) {
+          setToast('Your request details have been submitted.');
+          return;
+        }
+
+        if (nextStatus && !isCustomerActionStatus(nextStatus)) {
+          setToast('Your request details have been submitted.');
+          return;
+        }
+
+        const matchingTask = latestPendingTasks.find((task) => matchesAssignment(task, nextAssignmentId));
+        const shouldShowNextAssignment = isCustomerActionStatus(nextStatus) || Boolean(matchingTask);
+
+        if (!shouldShowNextAssignment) {
+          setToast('Your request details have been submitted.');
+          return;
+        }
+
+        const assignmentIdToOpen = matchingTask?.assignmentId || nextAssignmentId;
+        setActiveAssignment({ assignmentID: assignmentIdToOpen });
+        await openAssignmentInConstellation(assignmentIdToOpen).catch((error) => {
+          closeAssignment();
+          setToast(error instanceof Error ? error.message : 'Unable to open next customer action.');
+        });
+      })();
+    };
+
+    const handleFinish = (event: any) => handleAssignmentTransition(event, 'assignmentFinished');
+
+    const handleAssignmentSubmission = (event: any) => {
+      const transitionSeq = ++assignmentTransitionSeq.current;
+
+      console.log('[Pega PCore] ASSIGNMENT_SUBMISSION event', event);
+      closeAssignment();
+
+      window.setTimeout(() => {
+        if (transitionSeq !== assignmentTransitionSeq.current) return;
+        void refreshPendingTasks().catch((error) => {
+          console.warn('[Pega PCore] Pending task refresh after assignment submission failed', error);
+        });
+      }, 1200);
+    };
+
+    const handleCurrentAssignmentUpdated = (event: any) => {
+      const eventData = event?.data || event;
+      const status = getEventStatus(eventData);
+
+      console.log('[Pega PCore] CURRENT_ASSIGNMENT_UPDATED event', {
+        status,
+        eventData
+      });
+
+      if (activeAssignmentRef.current && status && !isCustomerActionStatus(status)) {
+        ++assignmentTransitionSeq.current;
+        closeAssignment();
+        setToast('Your request details have been submitted.');
+        void refreshPendingTasks().catch((error) => {
+          console.warn('[Pega PCore] Pending task refresh after current assignment update failed', error);
+        });
       }
     };
 
     const handleCaseCreated = (event: any) => {
       const eventData = event?.data || event;
-      const assignmentId = eventData?.assignmentID || eventData?.caseInfo?.assignments?.[0]?.ID || eventData?.ID;
+      const assignmentId = getEventAssignmentId(eventData);
+      const status = getEventStatus(eventData);
+
+      console.log('[Pega PCore] caseCreated event', {
+        assignmentId,
+        status,
+        eventData
+      });
+
+      const isInitialCreate = activeAssignmentRef.current?.assignmentID === 'NEW_CASE';
+
+      if (status && !isCustomerActionStatus(status)) {
+        closeAssignment();
+        setToast('Your request details have been submitted.');
+        return;
+      }
+
+      if (!status && !isInitialCreate) {
+        closeAssignment();
+        return;
+      }
+
       if (assignmentId) {
         setActiveAssignment({ assignmentID: assignmentId });
       }
@@ -197,13 +422,59 @@ function App() {
     PCore.getPubSubUtils().subscribe(PCore.getConstants().PUB_SUB_EVENTS.EVENT_CANCEL, closeAssignment, 'insureHubCancel');
     PCore.getPubSubUtils().subscribe('assignmentFinished', handleFinish, 'insureHubFinish');
     PCore.getPubSubUtils().subscribe('caseCreated', handleCaseCreated, 'insureHubCaseCreated');
+    PCore.getPubSubUtils().subscribe(
+      PCore.getConstants().PUB_SUB_EVENTS.CASE_EVENTS.ASSIGNMENT_SUBMISSION,
+      handleAssignmentSubmission,
+      'insureHubAssignmentSubmission'
+    );
+    PCore.getPubSubUtils().subscribe(
+      PCore.getConstants().PUB_SUB_EVENTS.CASE_EVENTS.END_OF_ASSIGNMENT_PROCESSING,
+      (event: any) => handleAssignmentTransition(event, 'END_OF_ASSIGNMENT_PROCESSING'),
+      'insureHubEndAssignmentProcessing'
+    );
+    PCore.getPubSubUtils().subscribe(
+      PCore.getConstants().PUB_SUB_EVENTS.CASE_EVENTS.CURRENT_ASSIGNMENT_UPDATED,
+      handleCurrentAssignmentUpdated,
+      'insureHubCurrentAssignmentUpdated'
+    );
 
     return () => {
       PCore.getPubSubUtils().unsubscribe(PCore.getConstants().PUB_SUB_EVENTS.EVENT_CANCEL, 'insureHubCancel');
       PCore.getPubSubUtils().unsubscribe('assignmentFinished', 'insureHubFinish');
       PCore.getPubSubUtils().unsubscribe('caseCreated', 'insureHubCaseCreated');
+      PCore.getPubSubUtils().unsubscribe(
+        PCore.getConstants().PUB_SUB_EVENTS.CASE_EVENTS.ASSIGNMENT_SUBMISSION,
+        'insureHubAssignmentSubmission'
+      );
+      PCore.getPubSubUtils().unsubscribe(
+        PCore.getConstants().PUB_SUB_EVENTS.CASE_EVENTS.END_OF_ASSIGNMENT_PROCESSING,
+        'insureHubEndAssignmentProcessing'
+      );
+      PCore.getPubSubUtils().unsubscribe(
+        PCore.getConstants().PUB_SUB_EVENTS.CASE_EVENTS.CURRENT_ASSIGNMENT_UPDATED,
+        'insureHubCurrentAssignmentUpdated'
+      );
     };
   }, [isPegaReady]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !isPegaReady || !customerId) return;
+
+    void loadPendingTasksFromPcore()
+      .then((pendingTasks) => {
+        setSnapshot((current) => ({
+          ...current,
+          pendingTasks,
+          summary: {
+            ...current.summary,
+            pendingTasks: pendingTasks.length
+          }
+        }));
+      })
+      .catch((error) => {
+        console.warn('[Pega PCore] Pending task load failed', error);
+      });
+  }, [isAuthenticated, isPegaReady, customerId]);
 
   if (!isAuthenticated) {
     return (
@@ -214,6 +485,10 @@ function App() {
           try {
             const session = await loginWithPega(username, password);
             const loggedInCustomerId = session.user.name;
+            storeSession({
+              token: session.token,
+              customerId: loggedInCustomerId
+            });
             setAuthToken(session.token);
             setCustomerId(loggedInCustomerId);
             setSnapshot(getPortalSnapshot(loggedInCustomerId));
@@ -229,6 +504,7 @@ function App() {
                 );
               });
           } catch (error) {
+            clearStoredSession();
             setAuthToken(undefined);
             setIsAuthenticated(false);
             setLoginError(error instanceof Error ? error.message : 'Pega login failed.');
@@ -244,6 +520,7 @@ function App() {
         activeTab={activeTab}
         onTabChange={(tab) => navigate(tabPath[tab])}
         onLogout={() => {
+          clearStoredSession();
           setAuthToken(undefined);
           setCustomerId(null);
           setSnapshot(getPortalSnapshot());
@@ -262,10 +539,10 @@ function App() {
                   user={snapshot.user}
                   summary={snapshot.summary}
                   policies={snapshot.policies}
-                  claims={snapshot.claims}
-                  serviceRequests={snapshot.serviceRequests}
+                  pendingTasks={snapshot.pendingTasks}
                   pegaConfigured={pegaConfigured}
                   onNavigate={(tab) => navigate(tabPath[tab])}
+                  onOpenPendingTask={handleOpenPendingTask}
                 />
               }
             />

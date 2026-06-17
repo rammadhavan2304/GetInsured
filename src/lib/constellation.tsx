@@ -81,11 +81,36 @@ export async function createCaseInConstellation(caseTypeId: string, content: Rec
     .getBootstrapUtils()
     .getCaseApi()
     .createCase(caseTypeId, PCore.getConstants().APP.APP, PCore.getConstants().PRIMARY, {
-      content,
+      startingFields: content,
       pageName: PCore.getConstants().PY_DETAILS || 'pyDetails',
       renderInline: true,
       viewType: 'page'
     });
 
+  PCore.getCoexistenceManager()?.getEventUtils?.().publishConstellationLoadedEvent?.();
+}
+
+export async function openAssignmentInConstellation(assignmentId: string) {
+  const PCore = window.PCore;
+  if (!PCore?.getBootstrapUtils?.() || !PCore?.getMashupApi?.()?.openAssignment) {
+    throw new Error('Pega Constellation assignment API is not ready.');
+  }
+
+  await PCore.getBootstrapUtils().loadRootComponent('pega-root', rootContainerWithHybrid, [
+    PCore.getConstants().CONTAINER_TYPE.HYBRID,
+    PCore.getConstants().LOAD_VIEW_STRING
+  ]);
+
+  PCore.getInitialiser().initCoreContainers();
+
+  const target = PCore.getConstants().APP.APP || 'primary';
+  const options = {
+    containerName: 'primary',
+    displayMode: 'workarea',
+    pageName: PCore.getConstants().PY_DETAILS || 'pyDetails'
+  };
+
+  console.log('[Pega PCore] Opening pending assignment', { assignmentId, target, options });
+  await PCore.getMashupApi().openAssignment(assignmentId, target, options);
   PCore.getCoexistenceManager()?.getEventUtils?.().publishConstellationLoadedEvent?.();
 }

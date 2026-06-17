@@ -2,6 +2,7 @@ import type {
   ClaimCaseOption,
   ClaimSummary,
   DashboardSummary,
+  PendingTaskSummary,
   PolicySummary,
   ServiceRequestSummary,
   UserProfile
@@ -134,9 +135,21 @@ export const serviceRequests: ServiceRequestSummary[] = [
   }
 ];
 
+export const pendingTasks: PendingTaskSummary[] = [
+  {
+    id: 'task-review',
+    assignmentId: 'CASE-MOCK-1',
+    caseId: 'IH-INSURE-WORK C-1001',
+    title: 'Coverage review',
+    status: 'Pending-CustomerAction',
+    lastUpdated: 'Jun 14, 2026',
+    caseTypeId: 'IH-Insure-Work-ScheduleConsultation'
+  }
+];
+
 export const dashboardSummary: DashboardSummary = {
   activePolicies: policies.filter((policy) => policy.status === 'Active').length,
   openClaims: claims.filter((claim) => claim.status !== 'Approved').length,
-  pendingTasks: serviceRequests.filter((request) => request.status !== 'Available').length,
+  pendingTasks: pendingTasks.length,
   nextPayment: '$466 due Jun 20'
 };

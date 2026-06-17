@@ -48,6 +48,16 @@ export interface ServiceRequestSummary {
   dueDate?: string;
 }
 
+export interface PendingTaskSummary {
+  id: string;
+  assignmentId: string;
+  caseId: string;
+  title: string;
+  status: string;
+  lastUpdated: string;
+  caseTypeId: string;
+}
+
 export interface DashboardSummary {
   activePolicies: number;
   openClaims: number;

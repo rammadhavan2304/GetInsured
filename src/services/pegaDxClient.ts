@@ -224,19 +224,29 @@ export class PegaDxClient {
 
   // === AI Agent (A2A / AgentX) support ===
   // Using the standard DX application/v2 surface for /ai-agents.
-  // Context (CustomerID, DocumentID, ChatQuestionPrompt) is passed with each call.
+  // The DX schema does not define arbitrary context on message calls, so caller
+  // supplied values should be included in Request text unless Pega exposes a
+  // typed parameter surface for the agent.
 
   async initiateAgentConversation(
     agentId: string,
-    content: string,
-    context: Record<string, unknown> = {}
+    options: {
+      activeChannel?: string;
+      activeChannelID?: string;
+      executeStarterQuestion?: boolean;
+      interactionID?: string;
+    } = {}
   ) {
     const path = `/ai-agents/${encodeURIComponent(agentId)}/conversations`;
     return this.request<{ conversationID?: string; ID?: string; conversationId?: string }>(
       path,
       {
         method: 'POST',
-        body: JSON.stringify({ content, context })
+        body: JSON.stringify({
+          executeStarterQuestion: false,
+          interactionID: `getinsured-${Date.now()}`,
+          ...options
+        })
       }
     );
   }
@@ -244,15 +254,14 @@ export class PegaDxClient {
   async sendMessageToAgentConversation(
     agentId: string,
     conversationId: string,
-    content: string,
-    context: Record<string, unknown> = {}
+    content: string
   ) {
     const path = `/ai-agents/${encodeURIComponent(agentId)}/conversations/${encodeURIComponent(conversationId)}`;
     return this.request(
       path,
       {
         method: 'PATCH',
-        body: JSON.stringify({ content, context })
+        body: JSON.stringify({ Request: content })
       }
     );
   }
@@ -269,8 +278,7 @@ export class PegaDxClient {
   async sendMessageToAgentConversationWithStream(
     agentId: string,
     conversationId: string,
-    requestText: string,
-    context: Record<string, unknown> = {}
+    requestText: string
   ): Promise<{ response: string }> {
     const path = `/ai-agents/${encodeURIComponent(agentId)}/conversations/${encodeURIComponent(conversationId)}`;
     const token = await this.authenticate();
@@ -284,8 +292,7 @@ export class PegaDxClient {
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({
-        request: requestText,
-        context,
+        Request: requestText,
         capabilities: {
           stream: { isEnabled: true }
         }
