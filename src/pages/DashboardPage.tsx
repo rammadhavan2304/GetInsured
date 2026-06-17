@@ -1,8 +1,10 @@
 import { Box, Button, Card, CardContent, Chip, Grid, Stack, Typography } from '@mui/material';
 import { AlertCircle, ArrowRight, BadgeDollarSign, ClipboardList, ShieldCheck, Wrench } from 'lucide-react';
+import type { BrandConfig } from '../branding/brandConfig';
 import type { DashboardSummary, PendingTaskSummary, PolicySummary, UserProfile } from '../types/portal';
 
 interface DashboardPageProps {
+  brand: BrandConfig;
   user: UserProfile;
   summary: DashboardSummary;
   policies: PolicySummary[];
@@ -12,6 +14,7 @@ interface DashboardPageProps {
 }
 
 export function DashboardPage({
+  brand,
   user,
   summary,
   policies,
@@ -20,10 +23,10 @@ export function DashboardPage({
   onOpenPendingTask
 }: DashboardPageProps) {
   const stats = [
-    { label: 'Active policies', value: summary.activePolicies, icon: <ShieldCheck size={22} /> },
-    { label: 'Open claims', value: summary.openClaims, icon: <ClipboardList size={22} /> },
-    { label: 'Pending tasks', value: summary.pendingTasks, icon: <AlertCircle size={22} /> },
-    { label: 'Next payment', value: summary.nextPayment, icon: <BadgeDollarSign size={22} /> }
+    { label: brand.dashboard.activePolicies, value: summary.activePolicies, icon: <ShieldCheck size={22} /> },
+    { label: brand.dashboard.openClaims, value: summary.openClaims, icon: <ClipboardList size={22} /> },
+    { label: brand.dashboard.pendingTasks, value: summary.pendingTasks, icon: <AlertCircle size={22} /> },
+    { label: brand.dashboard.nextPayment, value: summary.nextPayment, icon: <BadgeDollarSign size={22} /> }
   ];
 
   return (
@@ -31,7 +34,7 @@ export function DashboardPage({
       <Box className="page-heading">
         <Box>
           <Typography variant="h4">Welcome back, {user.name}</Typography>
-          <Typography color="text.secondary">A practical view of your insurance work queue.</Typography>
+          <Typography color="text.secondary">{brand.dashboard.welcomeSubtitle}</Typography>
         </Box>
       </Box>
       <Grid container spacing={2}>
@@ -53,9 +56,9 @@ export function DashboardPage({
           <Card>
             <CardContent>
               <Box className="section-header">
-                <Typography variant="h6">Coverage snapshot</Typography>
+                <Typography variant="h6">{brand.dashboard.coverageSnapshot}</Typography>
                 <Button endIcon={<ArrowRight size={16} />} onClick={() => onNavigate('policies')}>
-                  View policies
+                  {brand.dashboard.viewPolicies}
                 </Button>
               </Box>
               <Stack spacing={1.5}>
@@ -79,7 +82,7 @@ export function DashboardPage({
           <Card>
             <CardContent>
               <Box className="section-header">
-                <Typography variant="h6">Pending tasks</Typography>
+                <Typography variant="h6">{brand.dashboard.pendingTasksHeading}</Typography>
                 <Wrench size={20} />
               </Box>
               <Stack spacing={1.5}>
@@ -105,7 +108,7 @@ export function DashboardPage({
                   ))
                 ) : (
                   <Typography variant="body2" color="text.secondary">
-                    No cases are waiting on customer action.
+                    {brand.dashboard.emptyPendingTasks}
                   </Typography>
                 )}
               </Stack>

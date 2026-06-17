@@ -3,6 +3,7 @@ import { sdkSetAuthHeader } from '@pega/auth/lib/sdk-auth-manager';
 import { useEffect, useRef, useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
+import { useBrand } from './branding/BrandProvider';
 import { AppShell } from './components/AppShell';
 import { PolicyAIChat } from './components/PolicyAIChat';
 import { getPegaConfig } from './config/pegaConfig';
@@ -137,6 +138,7 @@ function App() {
   const pegaConfigured = pegaConfig !== null;
   const isPegaReady = useConstellation(isAuthenticated && pegaConfigured);
   const activeTab = tabFromPath(location.pathname);
+  const { brand, isThemeB, toggleThemeB } = useBrand();
 
   useEffect(() => {
     return installPegaRenderDiagnostics(setPegaRenderError);
@@ -600,6 +602,9 @@ function App() {
   if (!isAuthenticated) {
     return (
       <LoginPage
+        brand={brand}
+        isThemeB={isThemeB}
+        onThemeToggle={toggleThemeB}
         error={loginError}
         onLogin={async (username, password) => {
           setLoginError(null);
@@ -638,6 +643,9 @@ function App() {
   return (
     <>
       <AppShell
+        brand={brand}
+        isThemeB={isThemeB}
+        onThemeToggle={toggleThemeB}
         activeTab={activeTab}
         onTabChange={(tab) => navigate(tabPath[tab])}
         onLogout={() => {
@@ -672,6 +680,7 @@ function App() {
               path="/dashboard"
               element={
                 <DashboardPage
+                  brand={brand}
                   user={snapshot.user}
                   summary={snapshot.summary}
                   policies={snapshot.policies}
@@ -685,6 +694,7 @@ function App() {
               path="/policies"
               element={
                 <PoliciesPage
+                  brand={brand}
                   policies={snapshot.policies}
                   pegaConfigured={pegaConfigured}
                   onPolicyChange={handlePolicyChange}
@@ -696,6 +706,7 @@ function App() {
               path="/claims"
               element={
                 <ClaimsPage
+                  brand={brand}
                   claims={snapshot.claims}
                   claimCaseOptions={snapshot.claimCaseOptions}
                   pegaConfigured={pegaConfigured}
@@ -707,6 +718,7 @@ function App() {
               path="/services"
               element={
                 <ServicesPage
+                  brand={brand}
                   serviceRequests={snapshot.serviceRequests}
                   pegaConfigured={pegaConfigured}
                   startingServiceId={startingServiceId}

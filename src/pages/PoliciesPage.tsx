@@ -1,9 +1,11 @@
 import { Box, Button, Card, CardContent, Chip, Grid, IconButton, Stack, Tooltip, Typography } from '@mui/material';
 import { FilePenLine, Home, MessageCircle, ShieldCheck, Stethoscope, WalletCards } from 'lucide-react';
+import type { BrandConfig } from '../branding/brandConfig';
 import { ActionUnavailableNotice } from '../components/ConfigNotice';
 import type { PolicySummary } from '../types/portal';
 
 interface PoliciesPageProps {
+  brand: BrandConfig;
   policies: PolicySummary[];
   pegaConfigured: boolean;
   onPolicyChange: (policy: PolicySummary) => void;
@@ -17,13 +19,13 @@ const icons = {
   Life: <ShieldCheck size={22} />
 };
 
-export function PoliciesPage({ policies, pegaConfigured, onPolicyChange, onAskPolicyQuestion }: PoliciesPageProps) {
+export function PoliciesPage({ brand, policies, pegaConfigured, onPolicyChange, onAskPolicyQuestion }: PoliciesPageProps) {
   return (
     <Stack spacing={3}>
       <Box className="page-heading">
         <Box>
-          <Typography variant="h4">Policies</Typography>
-          <Typography color="text.secondary">Coverage, renewal, and payment details for every active product.</Typography>
+          <Typography variant="h4">{brand.policies.title}</Typography>
+          <Typography color="text.secondary">{brand.policies.subtitle}</Typography>
         </Box>
       </Box>
 
@@ -69,7 +71,7 @@ export function PoliciesPage({ policies, pegaConfigured, onPolicyChange, onAskPo
                     onClick={() => onPolicyChange(policy)}
                     fullWidth
                   >
-                    Request change
+                    {brand.policies.requestChange}
                   </Button>
                 </Stack>
 

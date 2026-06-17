@@ -4,15 +4,21 @@ import {
   Box,
   Button,
   Container,
+  FormControlLabel,
   IconButton,
+  Switch,
   Toolbar,
   Tooltip,
   Typography
 } from '@mui/material';
-import { ClipboardList, FileText, Home, LogOut, ShieldCheck, Wrench } from 'lucide-react';
+import { ClipboardList, FileText, Home, LogOut, ShieldCheck, Umbrella, Wrench } from 'lucide-react';
+import type { BrandConfig } from '../branding/brandConfig';
 import type { PortalTab, UserProfile } from '../types/portal';
 
 interface AppShellProps {
+  brand: BrandConfig;
+  isThemeB: boolean;
+  onThemeToggle: () => void;
   activeTab: PortalTab;
   onTabChange: (tab: PortalTab) => void;
   onLogout: () => void;
@@ -20,14 +26,15 @@ interface AppShellProps {
   children: React.ReactNode;
 }
 
-const tabs: Array<{ id: PortalTab; label: string; icon: React.ReactNode }> = [
-  { id: 'dashboard', label: 'Dashboard', icon: <Home size={18} /> },
-  { id: 'policies', label: 'Policies', icon: <ShieldCheck size={18} /> },
-  { id: 'claims', label: 'Claims', icon: <ClipboardList size={18} /> },
-  { id: 'services', label: 'Services', icon: <Wrench size={18} /> }
-];
+export function AppShell({ brand, isThemeB, onThemeToggle, activeTab, onTabChange, onLogout, user, children }: AppShellProps) {
+  const tabs: Array<{ id: PortalTab; label: string; icon: React.ReactNode }> = [
+    { id: 'dashboard', label: brand.nav.dashboard, icon: <Home size={18} /> },
+    { id: 'policies', label: brand.nav.policies, icon: <ShieldCheck size={18} /> },
+    { id: 'claims', label: brand.nav.claims, icon: <ClipboardList size={18} /> },
+    { id: 'services', label: brand.nav.services, icon: <Wrench size={18} /> }
+  ];
+  const BrandIcon = brand.id === 'themeB' ? Umbrella : FileText;
 
-export function AppShell({ activeTab, onTabChange, onLogout, user, children }: AppShellProps) {
   return (
     <Box className="app-frame">
       <AppBar position="sticky" elevation={0} color="inherit" className="topbar">
@@ -35,14 +42,14 @@ export function AppShell({ activeTab, onTabChange, onLogout, user, children }: A
           <Toolbar disableGutters className="toolbar">
             <Box className="brand" onClick={() => onTabChange('dashboard')}>
               <Box className="brand-mark">
-                <FileText size={22} />
+                <BrandIcon size={22} />
               </Box>
               <Box>
                 <Typography variant="h6" className="brand-name">
-                  GetInsured
+                  {brand.appName}
                 </Typography>
                 <Typography variant="caption" className="brand-caption">
-                  Customer portal
+                  {brand.portalCaption}
                 </Typography>
               </Box>
             </Box>
@@ -61,12 +68,17 @@ export function AppShell({ activeTab, onTabChange, onLogout, user, children }: A
             </Box>
 
             <Box className="user-actions">
+              <FormControlLabel
+                className="theme-toggle compact"
+                control={<Switch size="small" checked={isThemeB} onChange={onThemeToggle} />}
+                label="Theme B"
+              />
               <Box className="user-copy">
                 <Typography variant="body2" fontWeight={800}>
                   {user.name}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Member since {user.memberSince}
+                  {brand.memberSinceLabel} {user.memberSince}
                 </Typography>
               </Box>
               <Avatar className="avatar">{user.name.charAt(0)}</Avatar>

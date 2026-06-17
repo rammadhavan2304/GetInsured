@@ -1,16 +1,21 @@
 import { FormEvent, useState } from 'react';
-import { Alert, Box, Button, Card, CardContent, Chip, Stack, TextField, Typography } from '@mui/material';
-import { LockKeyhole, ShieldCheck } from 'lucide-react';
+import { Alert, Box, Button, Card, CardContent, Chip, FormControlLabel, Stack, Switch, TextField, Typography } from '@mui/material';
+import { LockKeyhole, ShieldCheck, Umbrella } from 'lucide-react';
+import type { BrandConfig } from '../branding/brandConfig';
 
 interface LoginPageProps {
+  brand: BrandConfig;
+  isThemeB: boolean;
+  onThemeToggle: () => void;
   onLogin: (username: string, password: string) => Promise<void>;
   error?: string | null;
 }
 
-export function LoginPage({ onLogin, error }: LoginPageProps) {
+export function LoginPage({ brand, isThemeB, onThemeToggle, onLogin, error }: LoginPageProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const ChipIcon = brand.id === 'themeB' ? Umbrella : ShieldCheck;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -25,12 +30,19 @@ export function LoginPage({ onLogin, error }: LoginPageProps) {
   return (
     <Box className="login-page">
       <Box className="login-hero">
-        <Chip className="hero-chip" icon={<ShieldCheck size={16} />} label="GetInsured member access" />
+        <Box className="login-theme-row">
+          <Chip className="hero-chip" icon={<ChipIcon size={16} />} label={brand.loginChip} />
+          <FormControlLabel
+            className="theme-toggle"
+            control={<Switch checked={isThemeB} onChange={onThemeToggle} />}
+            label="Theme B"
+          />
+        </Box>
         <Typography variant="h2" className="login-title">
-          Insurance support without the hold music.
+          {brand.loginTitle}
         </Typography>
         <Typography className="login-copy">
-          Review coverage, track claims, manage policies, and start service requests from one secure workspace.
+          {brand.loginCopy}
         </Typography>
       </Box>
 

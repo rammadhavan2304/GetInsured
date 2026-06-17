@@ -1,9 +1,11 @@
 import { Box, Button, Card, CardContent, Chip, Grid, Stack, Typography } from '@mui/material';
 import { ClipboardPlus, ExternalLink } from 'lucide-react';
+import type { BrandConfig } from '../branding/brandConfig';
 import { ActionUnavailableNotice } from '../components/ConfigNotice';
 import type { ClaimCaseOption, ClaimSummary } from '../types/portal';
 
 interface ClaimsPageProps {
+  brand: BrandConfig;
   claims: ClaimSummary[];
   claimCaseOptions: ClaimCaseOption[];
   pegaConfigured: boolean;
@@ -16,13 +18,13 @@ const statusColor = (status: ClaimSummary['status']) => {
   return 'primary';
 };
 
-export function ClaimsPage({ claims, claimCaseOptions, pegaConfigured, onCreateClaim }: ClaimsPageProps) {
+export function ClaimsPage({ brand, claims, claimCaseOptions, pegaConfigured, onCreateClaim }: ClaimsPageProps) {
   return (
     <Stack spacing={3}>
       <Box className="page-heading">
         <Box>
-          <Typography variant="h4">Claims</Typography>
-          <Typography color="text.secondary">Track progress, see owner teams, and start a new claim.</Typography>
+          <Typography variant="h4">{brand.claims.title}</Typography>
+          <Typography color="text.secondary">{brand.claims.subtitle}</Typography>
         </Box>
       </Box>
 
@@ -47,7 +49,7 @@ export function ClaimsPage({ claims, claimCaseOptions, pegaConfigured, onCreateC
                     disabled={!pegaConfigured}
                     onClick={() => onCreateClaim(option)}
                   >
-                    Start
+                    {brand.claims.start}
                   </Button>
                 </Stack>
               </CardContent>
@@ -84,7 +86,7 @@ export function ClaimsPage({ claims, claimCaseOptions, pegaConfigured, onCreateC
                     <strong>{claim.lastUpdated}</strong>
                   </Box>
                   <Button variant="outlined" startIcon={<ExternalLink size={18} />} disabled={!pegaConfigured}>
-                    Open claim case
+                    {brand.claims.openCase}
                   </Button>
                 </Stack>
               </CardContent>

@@ -1,9 +1,11 @@
 import { Box, Button, Card, CardContent, Chip, Grid, Stack, Typography } from '@mui/material';
 import { ArrowRight, CalendarCheck, MapPin, Phone, Wrench } from 'lucide-react';
+import type { BrandConfig } from '../branding/brandConfig';
 import { ActionUnavailableNotice } from '../components/ConfigNotice';
 import type { ServiceRequestSummary } from '../types/portal';
 
 interface ServicesPageProps {
+  brand: BrandConfig;
   serviceRequests: ServiceRequestSummary[];
   pegaConfigured: boolean;
   startingServiceId?: string | null;
@@ -19,6 +21,7 @@ const serviceIcon = (id: string) => {
 };
 
 export function ServicesPage({
+  brand,
   serviceRequests,
   pegaConfigured,
   startingServiceId,
@@ -29,14 +32,14 @@ export function ServicesPage({
     <Stack spacing={3}>
       <Box className="page-heading">
         <Box>
-          <Typography variant="h4">Services</Typography>
-          <Typography color="text.secondary">Make updates, request support, and manage pending policy tasks.</Typography>
+          <Typography variant="h4">{brand.services.title}</Typography>
+          <Typography color="text.secondary">{brand.services.subtitle}</Typography>
         </Box>
       </Box>
 
       {!pegaConfigured && <ActionUnavailableNotice />}
       {pegaConfigured && !isPegaReady && (
-        <Box className="inline-note">Pega Constellation runtime is loading. Service forms will be available shortly.</Box>
+        <Box className="inline-note">{brand.services.loading}</Box>
       )}
 
       <Grid container spacing={2}>
@@ -68,7 +71,7 @@ export function ServicesPage({
                     disabled={!pegaConfigured || !isPegaReady || startingServiceId === request.id}
                     onClick={() => onStartService(request)}
                   >
-                    {startingServiceId === request.id ? 'Starting...' : 'Start request'}
+                    {startingServiceId === request.id ? brand.services.starting : brand.services.startRequest}
                   </Button>
                 </Stack>
               </CardContent>
