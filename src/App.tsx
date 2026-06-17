@@ -1,6 +1,7 @@
-import { Alert, Dialog, DialogContent, Snackbar } from '@mui/material';
+import { Alert, Box, Button, Dialog, DialogContent, Snackbar, Typography } from '@mui/material';
 import { sdkSetAuthHeader } from '@pega/auth/lib/sdk-auth-manager';
 import { useEffect, useRef, useState } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { AppShell } from './components/AppShell';
 import { PolicyAIChat } from './components/PolicyAIChat';
@@ -17,6 +18,7 @@ import {
   createDxClient,
   getPortalSnapshot,
   isCustomerActionStatus,
+  loadOpenableCustomerActionTasksFromPcore,
   loadPendingTasksFromPcore,
   loadCustomerPortalSnapshot
 } from './services/portalDataService';
@@ -43,6 +45,42 @@ const getPegaAuthHeader = (token?: PegaToken) => {
   if (!token?.accessToken) return null;
   return `${token.tokenType || 'Bearer'} ${token.accessToken}`;
 };
+
+const findNestedString = (value: unknown, keys: string[]): string => {
+  if (!value || typeof value !== 'object') return '';
+
+  const record = value as Record<string, unknown>;
+  for (const key of keys) {
+    const direct = record[key];
+    if (typeof direct === 'string' && direct.trim()) return direct;
+  }
+
+  for (const child of Object.values(record)) {
+    const nested = findNestedString(child, keys);
+    if (nested) return nested;
+  }
+
+  return '';
+};
+
+const getNextAssignmentIdFromResponse = (value: unknown) => {
+  const response = value as any;
+  const explicitNext =
+    findNestedString(response?.nextAssignmentInfo, ['ID', 'id']) ||
+    findNestedString(response?.data?.nextAssignmentInfo, ['ID', 'id']) ||
+    findNestedString(response, ['nextAssignmentID']);
+
+  if (explicitNext) return explicitNext;
+
+  const nestedAssignmentId = findNestedString(response, ['assignmentID', 'AssignmentID']);
+  if (nestedAssignmentId) return nestedAssignmentId;
+
+  const genericId = findNestedString(response, ['ID', 'id']);
+  return genericId.startsWith('ASSIGN-') ? genericId : '';
+};
+
+const getCustomerActionStatusFromResponse = (value: unknown) =>
+  findNestedString(value, ['pyAssignmentStatus', 'pyStatusWork', 'status', 'Status', 'pyStatus', 'CaseStatus']);
 
 const SESSION_STORAGE_KEY = 'getinsured.pegaSession';
 
@@ -85,11 +123,13 @@ function App() {
   const [customerId, setCustomerId] = useState<string | null>(() => storedSession?.customerId || null);
   const [snapshot, setSnapshot] = useState(() => getPortalSnapshot(storedSession?.customerId));
   const [toast, setToast] = useState<string | null>(null);
+  const [submissionNotice, setSubmissionNotice] = useState<string | null>(null);
   const [pegaRenderError, setPegaRenderError] = useState<string | null>(null);
   const [startingServiceId, setStartingServiceId] = useState<string | null>(null);
   const [activeAssignment, setActiveAssignment] = useState<{ assignmentID: string } | null>(null);
   const activeAssignmentRef = useRef<{ assignmentID: string } | null>(null);
   const assignmentTransitionSeq = useRef(0);
+  const suppressTransitionCloseUntil = useRef(0);
   const [aiPolicy, setAiPolicy] = useState<import('./types/portal').PolicySummary | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -152,6 +192,112 @@ function App() {
     return pendingTasks;
   };
 
+  const showSubmittedNotice = () => {
+    setActiveAssignment(null);
+    setSubmissionNotice('Your case has been submitted for further processing.');
+  };
+
+  const handleAssignmentActionResponse = async (body: unknown, source: string) => {
+    const nextAssignmentId = getNextAssignmentIdFromResponse(body);
+    const nextStatus = getCustomerActionStatusFromResponse(body);
+
+    console.log(`[Pega DX] Assignment action response gate (${source})`, {
+      nextAssignmentId,
+      nextStatus,
+      body
+    });
+
+    ++assignmentTransitionSeq.current;
+    await refreshPendingTasks().catch((error) => {
+      console.warn('[Pega PCore] Pending task refresh after action response failed', error);
+    });
+
+          if (nextAssignmentId && isCustomerActionStatus(nextStatus)) {
+            suppressTransitionCloseUntil.current = Date.now() + 3000;
+            setSubmissionNotice(null);
+            setActiveAssignment({ assignmentID: nextAssignmentId });
+      await openAssignmentInConstellation(nextAssignmentId).catch((error) => {
+        setActiveAssignment(null);
+        setToast(error instanceof Error ? error.message : 'Unable to open next customer action.');
+      });
+      return;
+    }
+
+          if (nextStatus && !isCustomerActionStatus(nextStatus)) {
+            showSubmittedNotice();
+          }
+  };
+
+  useEffect(() => {
+    if (!isAuthenticated || !isPegaReady) return;
+
+    const originalFetch = window.fetch.bind(window);
+    const OriginalXHR = window.XMLHttpRequest;
+
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const response = await originalFetch(input, init);
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      const method = (init?.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
+      const isAssignmentActionSubmit =
+        method !== 'GET' &&
+        url.includes('/api/application/v2/assignments/') &&
+        url.includes('/actions/');
+
+      if (!isAssignmentActionSubmit || !response.ok) {
+        return response;
+      }
+
+      void response
+        .clone()
+        .json()
+        .then((body) => handleAssignmentActionResponse(body, 'fetch'))
+        .catch(() => {
+          // Non-JSON action responses are ignored.
+        });
+
+      return response;
+    };
+
+    const PatchedXHR = function XMLHttpRequestPatched(this: XMLHttpRequest) {
+      const xhr = new OriginalXHR();
+      let requestUrl = '';
+      let requestMethod = 'GET';
+      const originalOpen = xhr.open as any;
+
+      (xhr as any).open = function patchedOpen(method: string, url: string | URL, ...rest: any[]) {
+        requestMethod = String(method || 'GET').toUpperCase();
+        requestUrl = String(url || '');
+        return originalOpen.call(xhr, method, url, ...rest);
+      };
+
+      xhr.addEventListener('load', () => {
+        const isAssignmentActionSubmit =
+          requestMethod !== 'GET' &&
+          requestUrl.includes('/api/application/v2/assignments/') &&
+          requestUrl.includes('/actions/');
+
+        if (!isAssignmentActionSubmit || xhr.status < 200 || xhr.status >= 300 || !xhr.responseText) return;
+
+        try {
+          const body = JSON.parse(xhr.responseText);
+          void handleAssignmentActionResponse(body, 'xhr');
+        } catch {
+          // Non-JSON action responses are ignored.
+        }
+      });
+
+      return xhr;
+    } as any;
+
+    PatchedXHR.prototype = OriginalXHR.prototype;
+    window.XMLHttpRequest = PatchedXHR;
+
+    return () => {
+      window.fetch = originalFetch;
+      window.XMLHttpRequest = OriginalXHR;
+    };
+  }, [isAuthenticated, isPegaReady]);
+
   const handleCreateClaim = (option: ClaimCaseOption) => {
     const client = createDxClient(authToken);
     const caseTypeId = option.caseTypeId || pegaConfig?.caseTypes.claim;
@@ -195,6 +341,7 @@ function App() {
 
     const caseTypeId = request.id === 'srv-address' ? pegaConfig?.caseTypes.changeAddress || request.caseTypeId : request.caseTypeId;
 
+    setSubmissionNotice(null);
     setStartingServiceId(request.id);
     setActiveAssignment({ assignmentID: 'NEW_CASE' });
     setPegaRenderError(null);
@@ -255,6 +402,7 @@ function App() {
       return;
     }
 
+    setSubmissionNotice(null);
     setActiveAssignment({ assignmentID: assignmentId });
     setPegaRenderError(null);
 
@@ -286,13 +434,21 @@ function App() {
           eventData?.caseInfo?.assignments?.[0]?.pyAssignmentStatus ||
           eventData?.caseInfo?.assignments?.[0]?.pyStatusWork ||
           eventData?.caseInfo?.assignments?.[0]?.status ||
+          eventData?.data?.pyAssignmentStatus ||
+          eventData?.data?.pyStatusWork ||
+          eventData?.data?.status ||
           ''
       );
 
     const getEventAssignmentId = (eventData: any) =>
       eventData?.nextAssignmentID ||
+      eventData?.nextAssignmentInfo?.ID ||
+      eventData?.nextAssignmentInfo?.id ||
       eventData?.assignmentID ||
       eventData?.ID ||
+      eventData?.data?.nextAssignmentID ||
+      eventData?.data?.nextAssignmentInfo?.ID ||
+      eventData?.data?.nextAssignmentInfo?.id ||
       eventData?.caseInfo?.assignments?.[0]?.ID ||
       eventData?.caseInfo?.assignments?.[0]?.assignmentID;
 
@@ -316,37 +472,42 @@ function App() {
       });
 
       void (async () => {
+        if (Date.now() < suppressTransitionCloseUntil.current) return;
+
         closeAssignment();
         await wait(1200);
 
+        if (Date.now() < suppressTransitionCloseUntil.current) return;
         if (transitionSeq !== assignmentTransitionSeq.current) return;
 
-        const latestPendingTasks = await refreshPendingTasks().catch((error) => {
+        const [latestPendingTasks, latestOpenableTasks] = await Promise.all([
+          refreshPendingTasks().catch((error) => {
           console.warn('[Pega PCore] Pending task refresh after assignment transition failed', error);
           return [] as PendingTaskSummary[];
-        });
+          }),
+          loadOpenableCustomerActionTasksFromPcore().catch((error) => {
+            console.warn('[Pega PCore] Openable task refresh after assignment transition failed', error);
+            return [] as PendingTaskSummary[];
+          })
+        ]);
 
         if (transitionSeq !== assignmentTransitionSeq.current) return;
+        if (Date.now() < suppressTransitionCloseUntil.current) return;
 
-        if (!nextAssignmentId) {
-          setToast('Your request details have been submitted.');
-          return;
-        }
-
-        if (nextStatus && !isCustomerActionStatus(nextStatus)) {
-          setToast('Your request details have been submitted.');
-          return;
-        }
-
-        const matchingTask = latestPendingTasks.find((task) => matchesAssignment(task, nextAssignmentId));
-        const shouldShowNextAssignment = isCustomerActionStatus(nextStatus) || Boolean(matchingTask);
+        const matchingTask = nextAssignmentId
+          ? latestOpenableTasks.find((task) => matchesAssignment(task, nextAssignmentId))
+          : latestOpenableTasks.length === 1
+            ? latestOpenableTasks[0]
+            : undefined;
+        const shouldShowNextAssignment = Boolean(matchingTask) || Boolean(nextAssignmentId && isCustomerActionStatus(nextStatus));
 
         if (!shouldShowNextAssignment) {
-          setToast('Your request details have been submitted.');
+          showSubmittedNotice();
           return;
         }
 
         const assignmentIdToOpen = matchingTask?.assignmentId || nextAssignmentId;
+        setSubmissionNotice(null);
         setActiveAssignment({ assignmentID: assignmentIdToOpen });
         await openAssignmentInConstellation(assignmentIdToOpen).catch((error) => {
           closeAssignment();
@@ -357,38 +518,7 @@ function App() {
 
     const handleFinish = (event: any) => handleAssignmentTransition(event, 'assignmentFinished');
 
-    const handleAssignmentSubmission = (event: any) => {
-      const transitionSeq = ++assignmentTransitionSeq.current;
-
-      console.log('[Pega PCore] ASSIGNMENT_SUBMISSION event', event);
-      closeAssignment();
-
-      window.setTimeout(() => {
-        if (transitionSeq !== assignmentTransitionSeq.current) return;
-        void refreshPendingTasks().catch((error) => {
-          console.warn('[Pega PCore] Pending task refresh after assignment submission failed', error);
-        });
-      }, 1200);
-    };
-
-    const handleCurrentAssignmentUpdated = (event: any) => {
-      const eventData = event?.data || event;
-      const status = getEventStatus(eventData);
-
-      console.log('[Pega PCore] CURRENT_ASSIGNMENT_UPDATED event', {
-        status,
-        eventData
-      });
-
-      if (activeAssignmentRef.current && status && !isCustomerActionStatus(status)) {
-        ++assignmentTransitionSeq.current;
-        closeAssignment();
-        setToast('Your request details have been submitted.');
-        void refreshPendingTasks().catch((error) => {
-          console.warn('[Pega PCore] Pending task refresh after current assignment update failed', error);
-        });
-      }
-    };
+    const handleAssignmentSubmission = (event: any) => handleAssignmentTransition(event, 'ASSIGNMENT_SUBMISSION');
 
     const handleCaseCreated = (event: any) => {
       const eventData = event?.data || event;
@@ -404,8 +534,7 @@ function App() {
       const isInitialCreate = activeAssignmentRef.current?.assignmentID === 'NEW_CASE';
 
       if (status && !isCustomerActionStatus(status)) {
-        closeAssignment();
-        setToast('Your request details have been submitted.');
+        showSubmittedNotice();
         return;
       }
 
@@ -415,6 +544,7 @@ function App() {
       }
 
       if (assignmentId) {
+        setSubmissionNotice(null);
         setActiveAssignment({ assignmentID: assignmentId });
       }
     };
@@ -432,11 +562,6 @@ function App() {
       (event: any) => handleAssignmentTransition(event, 'END_OF_ASSIGNMENT_PROCESSING'),
       'insureHubEndAssignmentProcessing'
     );
-    PCore.getPubSubUtils().subscribe(
-      PCore.getConstants().PUB_SUB_EVENTS.CASE_EVENTS.CURRENT_ASSIGNMENT_UPDATED,
-      handleCurrentAssignmentUpdated,
-      'insureHubCurrentAssignmentUpdated'
-    );
 
     return () => {
       PCore.getPubSubUtils().unsubscribe(PCore.getConstants().PUB_SUB_EVENTS.EVENT_CANCEL, 'insureHubCancel');
@@ -449,10 +574,6 @@ function App() {
       PCore.getPubSubUtils().unsubscribe(
         PCore.getConstants().PUB_SUB_EVENTS.CASE_EVENTS.END_OF_ASSIGNMENT_PROCESSING,
         'insureHubEndAssignmentProcessing'
-      );
-      PCore.getPubSubUtils().unsubscribe(
-        PCore.getConstants().PUB_SUB_EVENTS.CASE_EVENTS.CURRENT_ASSIGNMENT_UPDATED,
-        'insureHubCurrentAssignmentUpdated'
       );
     };
   }, [isPegaReady]);
@@ -530,6 +651,21 @@ function App() {
         user={snapshot.user}
       >
         <div className={activeAssignment ? 'portal-route-content is-hidden' : 'portal-route-content'}>
+          {submissionNotice ? (
+            <Box className="submission-notice">
+              <Box className="submission-notice-icon">
+                <CheckCircle2 size={28} />
+              </Box>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h6">Case submitted</Typography>
+                <Typography color="text.secondary">{submissionNotice}</Typography>
+              </Box>
+              <Button variant="outlined" onClick={() => setSubmissionNotice(null)}>
+                Dismiss
+              </Button>
+            </Box>
+          ) : null}
+
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route
@@ -540,7 +676,6 @@ function App() {
                   summary={snapshot.summary}
                   policies={snapshot.policies}
                   pendingTasks={snapshot.pendingTasks}
-                  pegaConfigured={pegaConfigured}
                   onNavigate={(tab) => navigate(tabPath[tab])}
                   onOpenPendingTask={handleOpenPendingTask}
                 />

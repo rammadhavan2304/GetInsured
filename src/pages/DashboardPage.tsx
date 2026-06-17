@@ -1,6 +1,5 @@
 import { Box, Button, Card, CardContent, Chip, Grid, Stack, Typography } from '@mui/material';
 import { AlertCircle, ArrowRight, BadgeDollarSign, ClipboardList, ShieldCheck, Wrench } from 'lucide-react';
-import { ConfigNotice } from '../components/ConfigNotice';
 import type { DashboardSummary, PendingTaskSummary, PolicySummary, UserProfile } from '../types/portal';
 
 interface DashboardPageProps {
@@ -8,7 +7,6 @@ interface DashboardPageProps {
   summary: DashboardSummary;
   policies: PolicySummary[];
   pendingTasks: PendingTaskSummary[];
-  pegaConfigured: boolean;
   onNavigate: (tab: 'policies' | 'claims' | 'services') => void;
   onOpenPendingTask: (task: PendingTaskSummary) => void;
 }
@@ -18,7 +16,6 @@ export function DashboardPage({
   summary,
   policies,
   pendingTasks,
-  pegaConfigured,
   onNavigate,
   onOpenPendingTask
 }: DashboardPageProps) {
@@ -37,9 +34,6 @@ export function DashboardPage({
           <Typography color="text.secondary">A practical view of your insurance work queue.</Typography>
         </Box>
       </Box>
-
-      <ConfigNotice configured={pegaConfigured} />
-
       <Grid container spacing={2}>
         {stats.map((stat) => (
           <Grid item xs={12} sm={6} lg={3} key={stat.label}>

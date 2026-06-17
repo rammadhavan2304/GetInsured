@@ -143,6 +143,8 @@ export const isCustomerActionStatus = (status: string) => {
 
 const isPendingCustomerActionTask = (row: AnyRecord) => getRawCaseStatus(row).trim().toLowerCase() === 'pending-customeraction';
 
+const isOpenableCustomerActionTask = (row: AnyRecord) => isCustomerActionStatus(getRawCaseStatus(row));
+
 const mapPolicies = (rows: AnyRecord[]): PolicySummary[] =>
   rows.map((row, index) => ({
     id: text(row, ['id', 'ID', 'pyID', 'PolicyID', 'policyID'], `policy-${index}`),
@@ -193,7 +195,12 @@ const mapServiceRequests = (rows: AnyRecord[]): ServiceRequestSummary[] =>
   }));
 
 const mapPendingTasks = (rows: AnyRecord[]): PendingTaskSummary[] =>
-  rows.filter(isPendingCustomerActionTask).map((row, index) => {
+  rows.filter(isPendingCustomerActionTask).map((row, index) => mapPendingTask(row, index));
+
+const mapOpenableCustomerActionRows = (rows: AnyRecord[]): PendingTaskSummary[] =>
+  rows.filter(isOpenableCustomerActionTask).map((row, index) => mapPendingTask(row, index));
+
+const mapPendingTask = (row: AnyRecord, index: number): PendingTaskSummary => {
     const caseId = text(row, ['pyID', 'caseId', 'caseID', 'CaseID', 'pxRefObjectKey', 'pzInsKey', 'ID'], `pending-${index + 1}`);
     const assignmentId = text(row, ['pxInsKey', 'pzInsKey', 'pxAssignmentKey', 'assignmentID', 'AssignmentID', 'ID'], caseId);
     return {
@@ -205,9 +212,11 @@ const mapPendingTasks = (rows: AnyRecord[]): PendingTaskSummary[] =>
       lastUpdated: text(row, ['lastUpdated', 'LastUpdated', 'pxUpdateDateTime', 'pxCreateDateTime', 'dueDate', 'DueDate'], 'N/A'),
       caseTypeId: text(row, ['pxRefObjectClass', 'pxRefObjectType', 'caseTypeId', 'CaseTypeID', 'pyClassName', 'caseTypeID'], 'N/A')
     };
-  });
+  };
 
 export const mapPendingCustomerActionTasks = (response: unknown) => mapPendingTasks(extractRows(response));
+
+export const mapOpenableCustomerActionTasks = (response: unknown) => mapOpenableCustomerActionRows(extractRows(response));
 
 export const loadPendingTasksFromPcore = async (): Promise<PendingTaskSummary[]> => {
   const PCore = window.PCore;
@@ -217,6 +226,22 @@ export const loadPendingTasksFromPcore = async (): Promise<PendingTaskSummary[]>
   const tasks = mapPendingCustomerActionTasks(response);
 
   console.log('[Pega PCore] Pending customer action tasks', {
+    response,
+    count: tasks.length,
+    tasks
+  });
+
+  return tasks;
+};
+
+export const loadOpenableCustomerActionTasksFromPcore = async (): Promise<PendingTaskSummary[]> => {
+  const PCore = window.PCore;
+  if (!PCore?.getDataPageUtils?.()?.getDataAsync) return [];
+
+  const response = await PCore.getDataPageUtils().getDataAsync('D_pyMyWorkList', 'app/primary_1');
+  const tasks = mapOpenableCustomerActionTasks(response);
+
+  console.log('[Pega PCore] Openable customer action tasks', {
     response,
     count: tasks.length,
     tasks

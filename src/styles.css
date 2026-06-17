@@ -207,6 +207,31 @@ body {
   font-weight: 700;
 }
 
+.submission-notice {
+  align-items: center;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-left: 5px solid #15803d;
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgba(21, 128, 61, 0.12);
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 18px 20px;
+}
+
+.submission-notice-icon {
+  align-items: center;
+  background: #dcfce7;
+  border-radius: 999px;
+  color: #15803d;
+  display: flex;
+  flex: 0 0 auto;
+  height: 48px;
+  justify-content: center;
+  width: 48px;
+}
+
 .portal-route-content.is-hidden {
   display: none;
 }
