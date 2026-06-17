@@ -50,12 +50,14 @@ export function LoginPage({ brand, isThemeB, onThemeToggle, onLogin, error }: Lo
         <CardContent>
           <Stack component="form" spacing={2.5} onSubmit={handleSubmit}>
             <Box>
-              <Typography variant="h5">Sign in</Typography>
-              <Typography color="text.secondary">Use your Pega operator username and password.</Typography>
+              <Typography variant="h5">{brand.id === 'themeB' ? brand.loginTitle : 'Sign in'}</Typography>
+              <Typography color="text.secondary">
+                {brand.id === 'themeB' ? 'Use your customer ID and password.' : 'Use your Pega operator username and password.'}
+              </Typography>
             </Box>
             {error && <Alert severity="error">{error}</Alert>}
             <TextField
-              label="Pega username"
+              label={brand.id === 'themeB' ? 'myUniqa Ram Demo ID' : 'Pega username'}
               value={username}
               onChange={(event) => setUsername(event.target.value)}
               autoComplete="username"

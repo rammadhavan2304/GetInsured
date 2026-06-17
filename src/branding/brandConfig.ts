@@ -138,31 +138,31 @@ export const brands: Record<BrandId, BrandConfig> = {
   },
   themeB: {
     id: 'themeB',
-    appName: 'myUNIQA',
+    appName: 'myUniqa Ram Demo',
     portalCaption: 'Insurance self-service',
-    loginChip: 'myUNIQA secure access',
-    loginTitle: 'Your cover, claims, and service requests in one place.',
-    loginCopy: 'Manage policies, follow open claims, and complete customer actions through a secure digital workspace.',
+    loginChip: 'myUniqa Ram Demo',
+    loginTitle: 'myUniqa Ram Demo login',
+    loginCopy: 'Use your secure customer credentials to access policies, claims, and service requests.',
     memberSinceLabel: 'Customer since',
     nav: {
-      dashboard: 'Overview',
-      policies: 'Cover',
+      dashboard: 'Dashboard',
+      policies: 'Contracts',
       claims: 'Claims',
-      services: 'Requests'
+      services: 'Services'
     },
     dashboard: {
-      welcomeSubtitle: 'A focused view of your cover, claims, and actions.',
-      activePolicies: 'Active cover',
+      welcomeSubtitle: 'A focused view of your conversations, claims, documents, and customer actions.',
+      activePolicies: 'Active contracts',
       openClaims: 'Open claims',
       pendingTasks: 'Actions due',
       nextPayment: 'Next payment',
-      coverageSnapshot: 'Cover snapshot',
-      viewPolicies: 'View cover',
-      pendingTasksHeading: 'Actions required',
+      coverageSnapshot: 'Contracts snapshot',
+      viewPolicies: 'View contracts',
+      pendingTasksHeading: 'My Tasks',
       emptyPendingTasks: 'No customer actions are waiting.'
     },
     policies: {
-      title: 'Cover',
+      title: 'Contracts',
       subtitle: 'Policy, renewal, and payment details for your active insurance products.',
       requestChange: 'Request update'
     },
@@ -180,33 +180,33 @@ export const brands: Record<BrandId, BrandConfig> = {
       starting: 'Starting...'
     },
     cssVars: {
-      '--brand-bg': '#f4f7fb',
-      '--brand-primary': '#004b93',
-      '--brand-primary-dark': '#00356b',
-      '--brand-primary-soft': '#e4f0fb',
-      '--brand-secondary': '#f2a900',
-      '--brand-secondary-dark': '#b87900',
-      '--brand-text': '#172033',
-      '--brand-text-muted': '#5d6a7c',
-      '--brand-border': '#dbe4ef',
-      '--brand-card-border': '#d8e2ee',
-      '--brand-login-overlay': 'rgba(0, 45, 90, 0.68)',
-      '--brand-login-overlay-2': 'rgba(0, 75, 147, 0.48)',
-      '--brand-login-image': 'url("https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=80")'
+      '--brand-bg': '#f5f7fa',
+      '--brand-primary': '#005CA9',
+      '--brand-primary-dark': '#004a87',
+      '--brand-primary-soft': '#ebf4ff',
+      '--brand-secondary': '#005CA9',
+      '--brand-secondary-dark': '#004a87',
+      '--brand-text': '#333333',
+      '--brand-text-muted': '#666666',
+      '--brand-border': '#e2e8f0',
+      '--brand-card-border': '#e2e8f0',
+      '--brand-login-overlay': 'rgba(245, 247, 250, 1)',
+      '--brand-login-overlay-2': 'rgba(245, 247, 250, 1)',
+      '--brand-login-image': 'linear-gradient(#f5f7fa, #f5f7fa)'
     },
     palette: {
-      primary: '#004b93',
-      primaryDark: '#00356b',
-      primaryLight: '#e4f0fb',
-      secondary: '#f2a900',
-      secondaryDark: '#b87900',
-      secondaryLight: '#fff4cf',
-      background: '#f4f7fb',
+      primary: '#005CA9',
+      primaryDark: '#004a87',
+      primaryLight: '#ebf4ff',
+      secondary: '#005CA9',
+      secondaryDark: '#004a87',
+      secondaryLight: '#ebf4ff',
+      background: '#f5f7fa',
       paper: '#ffffff',
-      text: '#172033',
-      textSecondary: '#5d6a7c',
-      success: '#1b7f55',
-      warning: '#b87900'
+      text: '#333333',
+      textSecondary: '#666666',
+      success: '#2e7d32',
+      warning: '#92400e'
     }
   }
 };
@@ -254,12 +254,13 @@ export const createBrandTheme = (brand: BrandConfig) =>
       }
     },
     shape: {
-      borderRadius: 8
+      borderRadius: brand.id === 'themeB' ? 4 : 8
     },
     components: {
       MuiButton: {
         styleOverrides: {
           root: {
+            borderRadius: brand.id === 'themeB' ? 4 : 8,
             minHeight: 40
           }
         }
@@ -267,9 +268,9 @@ export const createBrandTheme = (brand: BrandConfig) =>
       MuiCard: {
         styleOverrides: {
           root: {
-            borderRadius: 8,
+            borderRadius: brand.id === 'themeB' ? 4 : 8,
             border: `1px solid ${brand.cssVars['--brand-card-border']}`,
-            boxShadow: '0 8px 24px rgba(24, 33, 42, 0.06)'
+            boxShadow: brand.id === 'themeB' ? '0 1px 3px rgba(0, 0, 0, 0.05)' : '0 8px 24px rgba(24, 33, 42, 0.06)'
           }
         }
       }
