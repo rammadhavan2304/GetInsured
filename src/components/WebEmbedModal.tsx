@@ -36,6 +36,7 @@ const WEB_EMBED_SCRIPT_URL = 'https://kfvow8ae.pegace.net/prweb/PRRestService/c1
 
 export function WebEmbedModal({ open, onClose, customerId, authHeader }: WebEmbedModalProps) {
   const embedId = useRef(`contact-details-embed-${Date.now()}`);
+  const embedRef = useRef<HTMLElement | null>(null);
   const startingFields = useMemo(
     () =>
       JSON.stringify({
@@ -48,14 +49,27 @@ export function WebEmbedModal({ open, onClose, customerId, authHeader }: WebEmbe
   useEffect(() => {
     if (!open) return;
 
+    const loadEmbed = () => {
+      window.setTimeout(() => {
+        const embed = embedRef.current as HTMLElement & { load?: () => void };
+        if (embed?.load) {
+          embed.load();
+        }
+      }, 100);
+    };
+
     const existingScript = document.querySelector(`script[src="${WEB_EMBED_SCRIPT_URL}"]`);
-    if (existingScript) return;
+    if (existingScript) {
+      loadEmbed();
+      return;
+    }
 
     const script = document.createElement('script');
     script.src = WEB_EMBED_SCRIPT_URL;
     script.async = true;
+    script.onload = loadEmbed;
     document.head.appendChild(script);
-  }, [open]);
+  }, [open, authHeader, startingFields]);
 
   useEffect(() => {
     if (!open) return;
@@ -85,6 +99,7 @@ export function WebEmbedModal({ open, onClose, customerId, authHeader }: WebEmbe
       </DialogTitle>
       <DialogContent className="web-embed-content">
         <pega-embed
+          ref={embedRef}
           id={embedId.current}
           action="createCase"
           caseTypeID="IH-Insure-Work-ChangeContactDetails"
