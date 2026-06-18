@@ -1,5 +1,5 @@
 import { Box, Button, Card, CardContent, Chip, Grid, IconButton, Stack, Tooltip, Typography } from '@mui/material';
-import { FilePenLine, Home, MessageCircle, ShieldCheck, Stethoscope, WalletCards } from 'lucide-react';
+import { ChevronRight, FilePenLine, Home, MessageCircle, ShieldCheck, Stethoscope, WalletCards } from 'lucide-react';
 import type { BrandConfig } from '../branding/brandConfig';
 import { ActionUnavailableNotice } from '../components/ConfigNotice';
 import type { PolicySummary } from '../types/portal';
@@ -22,9 +22,50 @@ const icons = {
 export function PoliciesPage({ brand, policies, pegaConfigured, onPolicyChange, onAskPolicyQuestion }: PoliciesPageProps) {
   if (brand.id === 'themeB') {
     return (
-      <Box className="uniqa-empty-page">
-        <Typography variant="h4">Contracts</Typography>
-        <Typography color="text.secondary">No contracts to view at this time</Typography>
+      <Box className="uniqa-page">
+        <Typography variant="h4" className="uniqa-page-title">
+          Contracts
+        </Typography>
+
+        {!pegaConfigured && <ActionUnavailableNotice />}
+
+        <Box className="uniqa-list-card">
+          {policies.length > 0 ? (
+            policies.map((policy) => (
+              <Box className="uniqa-list-item" key={policy.id}>
+                <Box className="uniqa-list-icon">{icons[policy.type]}</Box>
+                <Box className="uniqa-list-main">
+                  <Typography className="uniqa-list-title">{policy.title}</Typography>
+                  <Typography color="text.secondary">
+                    {policy.policyNumber} - {policy.coveredAsset}
+                  </Typography>
+                </Box>
+                <Chip label={policy.status} color={policy.status === 'Active' ? 'success' : 'warning'} size="small" />
+                <Button
+                  variant="outlined"
+                  size="small"
+                  disabled={!pegaConfigured}
+                  onClick={() => onPolicyChange(policy)}
+                  sx={{ ml: 1 }}
+                >
+                  Request update
+                </Button>
+                {onAskPolicyQuestion && pegaConfigured ? (
+                  <Tooltip title="Ask anything about this contract?" arrow placement="top">
+                    <IconButton size="small" onClick={() => onAskPolicyQuestion(policy)} color="primary">
+                      <MessageCircle size={18} />
+                    </IconButton>
+                  </Tooltip>
+                ) : null}
+                <ChevronRight size={22} className="uniqa-chevron" />
+              </Box>
+            ))
+          ) : (
+            <Box className="uniqa-list-item">
+              <Typography color="text.secondary">No contracts to view at this time</Typography>
+            </Box>
+          )}
+        </Box>
       </Box>
     );
   }
