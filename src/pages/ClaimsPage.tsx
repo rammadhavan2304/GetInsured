@@ -18,6 +18,10 @@ const statusColor = (status: ClaimSummary['status']) => {
   return 'primary';
 };
 
+const claimOptionDescription = (option: ClaimCaseOption) =>
+  option.description ||
+  `Start a ${option.label.toLowerCase()} request.`;
+
 export function ClaimsPage({ brand, claims, claimCaseOptions, pegaConfigured, onCreateClaim }: ClaimsPageProps) {
   if (brand.id === 'themeB') {
     const firstOption = claimCaseOptions[0];
@@ -73,7 +77,7 @@ export function ClaimsPage({ brand, claims, claimCaseOptions, pegaConfigured, on
             <Grid item xs={12} md={6} key={option.id}>
               <Box className="uniqa-action-card" onClick={() => pegaConfigured && onCreateClaim(option)}>
                 <Typography className="uniqa-action-title">{option.label}</Typography>
-                <Typography color="text.secondary">{option.caseTypeId}</Typography>
+                <Typography color="text.secondary">{claimOptionDescription(option)}</Typography>
               </Box>
             </Grid>
           ))}
