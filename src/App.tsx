@@ -204,7 +204,6 @@ function App() {
   const handleAssignmentActionResponse = async (body: unknown, source: string) => {
     const nextAssignmentId = getNextAssignmentIdFromResponse(body);
     const nextStatus = getCustomerActionStatusFromResponse(body);
-    const isCaseCreateResponse = source.includes('case-create');
 
     console.log(`[Pega DX] Assignment action response gate (${source})`, {
       nextAssignmentId,
@@ -217,7 +216,7 @@ function App() {
       console.warn('[Pega PCore] Pending task refresh after action response failed', error);
     });
 
-          if (nextAssignmentId && (isCaseCreateResponse || !nextStatus || isCustomerActionStatus(nextStatus))) {
+          if (nextAssignmentId && (!nextStatus || isCustomerActionStatus(nextStatus))) {
             suppressTransitionCloseUntil.current = Date.now() + 3000;
             setSubmissionNotice(null);
             setActiveAssignment({ assignmentID: nextAssignmentId });
@@ -228,7 +227,7 @@ function App() {
       return;
     }
 
-          if (!isCaseCreateResponse && nextStatus && !isCustomerActionStatus(nextStatus)) {
+          if (nextStatus && !isCustomerActionStatus(nextStatus)) {
             showSubmittedNotice();
           }
   };
@@ -380,8 +379,7 @@ function App() {
 
         const nextAssignmentId = getNextAssignmentIdFromResponse(createResponse);
         if (nextAssignmentId) {
-          suppressTransitionCloseUntil.current = Date.now() + 5000;
-          setSubmissionNotice(null);
+          suppressTransitionCloseUntil.current = Date.now() + 3000;
           setActiveAssignment({ assignmentID: nextAssignmentId });
           await openAssignmentInConstellation(nextAssignmentId);
         }
@@ -613,17 +611,6 @@ function App() {
 
       const isInitialCreate = activeAssignmentRef.current?.assignmentID === 'NEW_CASE';
 
-      if (assignmentId) {
-        suppressTransitionCloseUntil.current = Date.now() + 5000;
-        setSubmissionNotice(null);
-        setActiveAssignment({ assignmentID: assignmentId });
-        void openAssignmentInConstellation(assignmentId).catch((error) => {
-          setActiveAssignment(null);
-          setToast(error instanceof Error ? error.message : 'Unable to open created case assignment.');
-        });
-        return;
-      }
-
       if (status && !isCustomerActionStatus(status)) {
         showSubmittedNotice();
         return;
@@ -632,6 +619,11 @@ function App() {
       if (!status && !isInitialCreate) {
         closeAssignment();
         return;
+      }
+
+      if (assignmentId) {
+        setSubmissionNotice(null);
+        setActiveAssignment({ assignmentID: assignmentId });
       }
     };
 
