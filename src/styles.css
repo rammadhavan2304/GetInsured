@@ -261,6 +261,19 @@ body {
   width: 48px;
 }
 
+.web-embed-title {
+  align-items: center;
+  border-bottom: 1px solid var(--brand-border, #dfe7e2);
+  display: flex;
+  justify-content: space-between;
+  padding: 18px 24px !important;
+}
+
+.web-embed-content {
+  min-height: min(720px, 78vh);
+  padding: 0 !important;
+}
+
 .portal-route-content.is-hidden {
   display: none;
 }

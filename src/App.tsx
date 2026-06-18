@@ -6,6 +6,7 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router'
 import { useBrand } from './branding/BrandProvider';
 import { AppShell } from './components/AppShell';
 import { PolicyAIChat } from './components/PolicyAIChat';
+import { WebEmbedModal } from './components/WebEmbedModal';
 import { getPegaConfig } from './config/pegaConfig';
 import { DashboardPage } from './pages/DashboardPage';
 import { ClaimsPage } from './pages/ClaimsPage';
@@ -128,6 +129,7 @@ function App() {
   const [pegaRenderError, setPegaRenderError] = useState<string | null>(null);
   const [startingServiceId, setStartingServiceId] = useState<string | null>(null);
   const [activeAssignment, setActiveAssignment] = useState<{ assignmentID: string } | null>(null);
+  const [webEmbedOpen, setWebEmbedOpen] = useState(false);
   const activeAssignmentRef = useRef<{ assignmentID: string } | null>(null);
   const assignmentTransitionSeq = useRef(0);
   const suppressTransitionCloseUntil = useRef(0);
@@ -332,6 +334,19 @@ function App() {
   const handleStartService = (request: ServiceRequestSummary) => {
     if (!pegaConfigured) {
       setToast('Pega DX API is not configured yet. Add .env values to enable this action.');
+      return;
+    }
+
+    if (request.id === 'srv-contact') {
+      if (!customerId) {
+        setToast('Customer ID is not available for this Pega request.');
+        return;
+      }
+
+      setSubmissionNotice(null);
+      setPegaRenderError(null);
+      setActiveAssignment(null);
+      setWebEmbedOpen(true);
       return;
     }
 
@@ -788,6 +803,10 @@ function App() {
           )}
         </DialogContent>
       </Dialog>
+
+      {customerId ? (
+        <WebEmbedModal open={webEmbedOpen} onClose={() => setWebEmbedOpen(false)} customerId={customerId} />
+      ) : null}
     </>
   );
 }

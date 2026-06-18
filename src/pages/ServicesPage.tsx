@@ -33,6 +33,9 @@ export function ServicesPage({
   onOpenPendingTask
 }: ServicesPageProps) {
   if (brand.id === 'themeB') {
+    const canStartRequest = (request: ServiceRequestSummary) =>
+      pegaConfigured && (isPegaReady || request.id === 'srv-contact') && startingServiceId !== request.id;
+
     const getUniqaServiceIcon = (request: ServiceRequestSummary) => {
       const text = `${request.id} ${request.title}`.toLowerCase();
       if (text.includes('address')) return <MapPin size={26} />;
@@ -82,7 +85,7 @@ export function ServicesPage({
             <Box
               className="uniqa-list-item"
               key={request.id}
-              onClick={() => pegaConfigured && isPegaReady && startingServiceId !== request.id && onStartService(request)}
+              onClick={() => canStartRequest(request) && onStartService(request)}
             >
               <Box className="uniqa-list-icon">{getUniqaServiceIcon(request)}</Box>
               <Box className="uniqa-list-main">
@@ -137,7 +140,7 @@ export function ServicesPage({
                   <Button
                     variant="outlined"
                     endIcon={<ArrowRight size={18} />}
-                    disabled={!pegaConfigured || !isPegaReady || startingServiceId === request.id}
+                    disabled={!pegaConfigured || (!isPegaReady && request.id !== 'srv-contact') || startingServiceId === request.id}
                     onClick={() => onStartService(request)}
                   >
                     {startingServiceId === request.id ? brand.services.starting : brand.services.startRequest}
