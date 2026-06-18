@@ -1,5 +1,5 @@
 import { Box, Button, Card, CardContent, Chip, Grid, IconButton, Stack, Tooltip, Typography } from '@mui/material';
-import { ChevronRight, FilePenLine, Home, MessageCircle, ShieldCheck, Stethoscope, WalletCards } from 'lucide-react';
+import { ChevronRight, ClipboardPlus, Home, MessageCircle, ShieldCheck, Stethoscope, WalletCards } from 'lucide-react';
 import type { BrandConfig } from '../branding/brandConfig';
 import { ActionUnavailableNotice } from '../components/ConfigNotice';
 import type { PolicySummary } from '../types/portal';
@@ -8,7 +8,7 @@ interface PoliciesPageProps {
   brand: BrandConfig;
   policies: PolicySummary[];
   pegaConfigured: boolean;
-  onPolicyChange: (policy: PolicySummary) => void;
+  onStartPolicyClaim: (policy: PolicySummary) => void;
   onAskPolicyQuestion?: (policy: PolicySummary) => void;
 }
 
@@ -19,7 +19,7 @@ const icons = {
   Life: <ShieldCheck size={22} />
 };
 
-export function PoliciesPage({ brand, policies, pegaConfigured, onPolicyChange, onAskPolicyQuestion }: PoliciesPageProps) {
+export function PoliciesPage({ brand, policies, pegaConfigured, onStartPolicyClaim, onAskPolicyQuestion }: PoliciesPageProps) {
   if (brand.id === 'themeB') {
     return (
       <Box className="uniqa-page">
@@ -45,10 +45,10 @@ export function PoliciesPage({ brand, policies, pegaConfigured, onPolicyChange, 
                   variant="outlined"
                   size="small"
                   disabled={!pegaConfigured}
-                  onClick={() => onPolicyChange(policy)}
+                  onClick={() => onStartPolicyClaim(policy)}
                   sx={{ ml: 1 }}
                 >
-                  Request update
+                  Start claim
                 </Button>
                 {onAskPolicyQuestion && pegaConfigured ? (
                   <Tooltip title="Ask anything about this contract?" arrow placement="top">
@@ -116,12 +116,12 @@ export function PoliciesPage({ brand, policies, pegaConfigured, onPolicyChange, 
                   </Box>
                   <Button
                     variant="outlined"
-                    startIcon={<FilePenLine size={18} />}
+                    startIcon={<ClipboardPlus size={18} />}
                     disabled={!pegaConfigured}
-                    onClick={() => onPolicyChange(policy)}
+                    onClick={() => onStartPolicyClaim(policy)}
                     fullWidth
                   >
-                    {brand.policies.requestChange}
+                    Start claim
                   </Button>
                 </Stack>
 

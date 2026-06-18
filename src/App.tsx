@@ -318,17 +318,35 @@ function App() {
     }, `${option.label} case created in Pega.`);
   };
 
-  const handlePolicyChange = (policy: PolicySummary) => {
+  const getPolicyIdForCase = (policy: PolicySummary) =>
+    policy.id && !policy.id.startsWith('policy-') ? policy.id : policy.policyNumber;
+
+  const handleStartPolicyClaim = (policy: PolicySummary) => {
     const client = createDxClient(authToken);
-    const caseTypeId = pegaConfig?.caseTypes.policyChange;
+    const motorClaimOption = snapshot.claimCaseOptions.find(
+      (option) => option.id === 'claim-motor' || option.label.toLowerCase().includes('motor')
+    );
+    const healthClaimOption = snapshot.claimCaseOptions.find(
+      (option) => option.id === 'claim-health' || option.label.toLowerCase().includes('health')
+    );
+    const caseTypeId =
+      policy.type === 'Health'
+        ? pegaConfig?.caseTypes.healthClaim || healthClaimOption?.caseTypeId || pegaConfig?.caseTypes.claim
+        : policy.type === 'Auto'
+          ? pegaConfig?.caseTypes.motorClaim || motorClaimOption?.caseTypeId || pegaConfig?.caseTypes.claim
+          : pegaConfig?.caseTypes.claim || motorClaimOption?.caseTypeId;
+
     void runPegaAction(async () => {
-      if (!client || !caseTypeId) throw new Error('Policy change case type is not configured.');
+      if (!client || !caseTypeId) throw new Error('Policy claim case type is not configured.');
       if (!pegaConfig || !customerId) throw new Error('Customer ID is not available for this Pega request.');
       return client.createCase(
         caseTypeId,
-        buildCustomerCaseContent(pegaConfig, customerId, { policyNumber: policy.policyNumber })
+        {
+          ...buildCustomerCaseContent(pegaConfig, customerId),
+          PolicyID: getPolicyIdForCase(policy)
+        }
       );
-    }, 'Policy change request created in Pega.');
+    }, `${policy.title} claim case created in Pega.`);
   };
 
   const handleStartService = (request: ServiceRequestSummary) => {
@@ -712,7 +730,7 @@ function App() {
                   brand={brand}
                   policies={snapshot.policies}
                   pegaConfigured={pegaConfigured}
-                  onPolicyChange={handlePolicyChange}
+                  onStartPolicyClaim={handleStartPolicyClaim}
                   onAskPolicyQuestion={setAiPolicy}
                 />
               }
