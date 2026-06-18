@@ -91,7 +91,7 @@ export const brands: Record<BrandId, BrandConfig> = {
     policies: {
       title: 'Policies',
       subtitle: 'Coverage, renewal, and payment details for every active product.',
-      requestChange: 'Start claim'
+      requestChange: 'Request change'
     },
     claims: {
       title: 'Claims',
@@ -164,7 +164,7 @@ export const brands: Record<BrandId, BrandConfig> = {
     policies: {
       title: 'Contracts',
       subtitle: 'Policy, renewal, and payment details for your active insurance products.',
-      requestChange: 'Start claim'
+      requestChange: 'Request update'
     },
     claims: {
       title: 'Claims',
