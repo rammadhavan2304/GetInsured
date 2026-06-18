@@ -11,11 +11,12 @@ declare global {
           caseTypeID?: string;
           themeID?: string;
           casePage?: string;
+          assignmentHeader?: string;
           appAlias?: string;
           pegaServerUrl?: string;
-          autoReauth?: string;
-          authService?: string;
-          clientId?: string;
+          grantType?: string;
+          deferLoad?: string;
+          authHeader?: string;
           startingFields?: string;
         },
         HTMLElement
@@ -28,11 +29,12 @@ interface WebEmbedModalProps {
   open: boolean;
   onClose: () => void;
   customerId: string;
+  authHeader: string;
 }
 
 const WEB_EMBED_SCRIPT_URL = 'https://kfvow8ae.pegace.net/prweb/PRRestService/c11nsvc/v1/pega-embed.js';
 
-export function WebEmbedModal({ open, onClose, customerId }: WebEmbedModalProps) {
+export function WebEmbedModal({ open, onClose, customerId, authHeader }: WebEmbedModalProps) {
   const embedId = useRef(`contact-details-embed-${Date.now()}`);
   const startingFields = useMemo(
     () =>
@@ -88,11 +90,12 @@ export function WebEmbedModal({ open, onClose, customerId }: WebEmbedModalProps)
           caseTypeID="IH-Insure-Work-ChangeContactDetails"
           themeID="pyWebSelfService"
           casePage="assignment"
+          assignmentHeader="false"
           appAlias="insurehub"
           pegaServerUrl="https://kfvow8ae.pegace.net/prweb/"
-          autoReauth="true"
-          authService="pega"
-          clientId="85261282657452397415"
+          grantType="none"
+          deferLoad="true"
+          authHeader={authHeader}
           startingFields={startingFields}
           style={{ width: '100%', display: 'block', minHeight: '620px' }}
         />

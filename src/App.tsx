@@ -804,8 +804,13 @@ function App() {
         </DialogContent>
       </Dialog>
 
-      {customerId ? (
-        <WebEmbedModal open={webEmbedOpen} onClose={() => setWebEmbedOpen(false)} customerId={customerId} />
+      {customerId && authToken ? (
+        <WebEmbedModal
+          open={webEmbedOpen}
+          onClose={() => setWebEmbedOpen(false)}
+          customerId={customerId}
+          authHeader={getPegaAuthHeader(authToken) || ''}
+        />
       ) : null}
     </>
   );
