@@ -20,6 +20,15 @@ const icons = {
 };
 
 export function PoliciesPage({ brand, policies, pegaConfigured, onPolicyChange, onAskPolicyQuestion }: PoliciesPageProps) {
+  if (brand.id === 'themeB') {
+    return (
+      <Box className="uniqa-empty-page">
+        <Typography variant="h4">Contracts</Typography>
+        <Typography color="text.secondary">No contracts to view at this time</Typography>
+      </Box>
+    );
+  }
+
   return (
     <Stack spacing={3}>
       <Box className="page-heading">

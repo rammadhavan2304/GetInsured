@@ -1,5 +1,5 @@
 import { Box, Button, Card, CardContent, Chip, Grid, Stack, Typography } from '@mui/material';
-import { ClipboardPlus, ExternalLink } from 'lucide-react';
+import { ChevronRight, ClipboardPlus, ExternalLink, PlusCircle } from 'lucide-react';
 import type { BrandConfig } from '../branding/brandConfig';
 import { ActionUnavailableNotice } from '../components/ConfigNotice';
 import type { ClaimCaseOption, ClaimSummary } from '../types/portal';
@@ -19,6 +19,69 @@ const statusColor = (status: ClaimSummary['status']) => {
 };
 
 export function ClaimsPage({ brand, claims, claimCaseOptions, pegaConfigured, onCreateClaim }: ClaimsPageProps) {
+  if (brand.id === 'themeB') {
+    const firstOption = claimCaseOptions[0];
+
+    return (
+      <Box className="uniqa-page">
+        <Box className="uniqa-page-title-row">
+          <Typography variant="h4">Claims</Typography>
+          <Button
+            variant="contained"
+            startIcon={<PlusCircle size={20} />}
+            disabled={!pegaConfigured || !firstOption}
+            onClick={() => firstOption && onCreateClaim(firstOption)}
+          >
+            Submit new claim
+          </Button>
+        </Box>
+
+        {!pegaConfigured && <ActionUnavailableNotice />}
+
+        <Typography variant="h5" className="uniqa-section-title">
+          My Tasks (Worklist)
+        </Typography>
+        <Typography className="uniqa-empty-copy">You have no pending tasks.</Typography>
+
+        <Typography variant="h5" className="uniqa-section-title large-gap">
+          My Outstanding Claims
+        </Typography>
+        <Box className="uniqa-list-card">
+          {claims.length > 0 ? (
+            claims.map((claim) => (
+              <Box className="uniqa-list-item" key={claim.id}>
+                <Box className="uniqa-list-main">
+                  <Typography className="uniqa-list-title">{claim.title}</Typography>
+                  <Typography color="text.secondary">Created: {claim.lastUpdated}</Typography>
+                </Box>
+                <Chip label={claim.status} color={statusColor(claim.status)} size="small" />
+                <ChevronRight size={22} className="uniqa-chevron" />
+              </Box>
+            ))
+          ) : (
+            <Box className="uniqa-list-item">
+              <Typography color="text.secondary">No outstanding claims found.</Typography>
+            </Box>
+          )}
+        </Box>
+
+        <Typography variant="h5" className="uniqa-section-title large-gap">
+          Available Claim Types
+        </Typography>
+        <Grid container spacing={2}>
+          {claimCaseOptions.map((option) => (
+            <Grid item xs={12} md={6} key={option.id}>
+              <Box className="uniqa-action-card" onClick={() => pegaConfigured && onCreateClaim(option)}>
+                <Typography className="uniqa-action-title">{option.label}</Typography>
+                <Typography color="text.secondary">{option.caseTypeId}</Typography>
+              </Box>
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
+    );
+  }
+
   return (
     <Stack spacing={3}>
       <Box className="page-heading">

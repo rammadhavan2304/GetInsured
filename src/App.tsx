@@ -720,10 +720,12 @@ function App() {
                 <ServicesPage
                   brand={brand}
                   serviceRequests={snapshot.serviceRequests}
+                  pendingTasks={snapshot.pendingTasks}
                   pegaConfigured={pegaConfigured}
                   startingServiceId={startingServiceId}
                   isPegaReady={isPegaReady}
                   onStartService={handleStartService}
+                  onOpenPendingTask={handleOpenPendingTask}
                 />
               }
             />

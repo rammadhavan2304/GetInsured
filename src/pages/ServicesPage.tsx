@@ -1,16 +1,18 @@
 import { Box, Button, Card, CardContent, Chip, Grid, Stack, Typography } from '@mui/material';
-import { ArrowRight, CalendarCheck, MapPin, Phone, Wrench } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CalendarCheck, ChevronRight, MapPin, MessageCircle, Phone, Stethoscope, Wrench } from 'lucide-react';
 import type { BrandConfig } from '../branding/brandConfig';
 import { ActionUnavailableNotice } from '../components/ConfigNotice';
-import type { ServiceRequestSummary } from '../types/portal';
+import type { PendingTaskSummary, ServiceRequestSummary } from '../types/portal';
 
 interface ServicesPageProps {
   brand: BrandConfig;
   serviceRequests: ServiceRequestSummary[];
+  pendingTasks?: PendingTaskSummary[];
   pegaConfigured: boolean;
   startingServiceId?: string | null;
   isPegaReady: boolean;
   onStartService: (request: ServiceRequestSummary) => void;
+  onOpenPendingTask?: (task: PendingTaskSummary) => void;
 }
 
 const serviceIcon = (id: string) => {
@@ -23,11 +25,78 @@ const serviceIcon = (id: string) => {
 export function ServicesPage({
   brand,
   serviceRequests,
+  pendingTasks = [],
   pegaConfigured,
   startingServiceId,
   isPegaReady,
-  onStartService
+  onStartService,
+  onOpenPendingTask
 }: ServicesPageProps) {
+  if (brand.id === 'themeB') {
+    const getUniqaServiceIcon = (request: ServiceRequestSummary) => {
+      const text = `${request.id} ${request.title}`.toLowerCase();
+      if (text.includes('address')) return <MapPin size={26} />;
+      if (text.includes('contact') || text.includes('phone')) return <Phone size={26} />;
+      if (text.includes('consult')) return <Stethoscope size={26} />;
+      return <MessageCircle size={26} />;
+    };
+
+    return (
+      <Box className="uniqa-page">
+        <Typography variant="h4" className="uniqa-page-title">
+          Services
+        </Typography>
+
+        {!pegaConfigured && <ActionUnavailableNotice />}
+        {pegaConfigured && !isPegaReady && <Box className="inline-note">{brand.services.loading}</Box>}
+
+        {pendingTasks.length > 0 ? (
+          <Box className="uniqa-pending-block">
+            <Typography variant="h5" className="uniqa-pending-heading">
+              <AlertTriangle size={22} /> Pending Tasks
+            </Typography>
+            <Box className="uniqa-list-card is-pending">
+              {pendingTasks.map((task) => (
+                <Box className="uniqa-list-item is-pending" key={task.id} onClick={() => onOpenPendingTask?.(task)}>
+                  <Box className="uniqa-list-icon danger">
+                    <MapPin size={28} />
+                  </Box>
+                  <Box className="uniqa-list-main">
+                    <Typography className="uniqa-list-title">Change Address - {task.caseId}</Typography>
+                    <Typography color="text.secondary">
+                      Status: {task.status} - Updated: {task.lastUpdated}
+                    </Typography>
+                  </Box>
+                  <ChevronRight size={22} className="uniqa-chevron" />
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        ) : null}
+
+        <Typography variant="h5" className="uniqa-section-title">
+          Available Services
+        </Typography>
+        <Box className="uniqa-list-card">
+          {serviceRequests.map((request) => (
+            <Box
+              className="uniqa-list-item"
+              key={request.id}
+              onClick={() => pegaConfigured && isPegaReady && startingServiceId !== request.id && onStartService(request)}
+            >
+              <Box className="uniqa-list-icon">{getUniqaServiceIcon(request)}</Box>
+              <Box className="uniqa-list-main">
+                <Typography className="uniqa-list-title">{request.title}</Typography>
+                <Typography color="text.secondary">{request.description}</Typography>
+              </Box>
+              <ChevronRight size={22} className="uniqa-chevron" />
+            </Box>
+          ))}
+        </Box>
+      </Box>
+    );
+  }
+
   return (
     <Stack spacing={3}>
       <Box className="page-heading">

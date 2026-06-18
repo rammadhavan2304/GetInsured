@@ -1,5 +1,16 @@
 import { Box, Button, Card, CardContent, Chip, Grid, Stack, Typography } from '@mui/material';
-import { AlertCircle, ArrowRight, BadgeDollarSign, ClipboardList, ShieldCheck, Wrench } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowRight,
+  BadgeDollarSign,
+  ChevronRight,
+  ClipboardList,
+  FileText,
+  MessageSquare,
+  ShieldCheck,
+  UploadCloud,
+  Wrench
+} from 'lucide-react';
 import type { BrandConfig } from '../branding/brandConfig';
 import type { DashboardSummary, PendingTaskSummary, PolicySummary, UserProfile } from '../types/portal';
 
@@ -22,6 +33,68 @@ export function DashboardPage({
   onNavigate,
   onOpenPendingTask
 }: DashboardPageProps) {
+  if (brand.id === 'themeB') {
+    const offers = [
+      {
+        title: 'Haushalt versichern. Sorgenfrei wohnen.',
+        image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=600&q=80',
+        action: 'See my offer'
+      },
+      {
+        title: 'Privatarzt-Versicherung',
+        image: 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=600&q=80',
+        action: 'Get your quote'
+      },
+      {
+        title: 'Get legal cover now',
+        image: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=600&q=80',
+        action: 'Get legal cover now'
+      },
+      {
+        title: 'Online Health Check',
+        image: 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=600&q=80',
+        action: 'Check now'
+      }
+    ];
+
+    const quickLinks = [
+      { label: 'Conversations', icon: <MessageSquare size={24} /> },
+      { label: 'Claims', icon: <UploadCloud size={24} />, onClick: () => onNavigate('claims') },
+      { label: 'My Documents', icon: <FileText size={24} /> }
+    ];
+
+    return (
+      <Box className="uniqa-page">
+        <Typography className="uniqa-greeting">Good afternoon,</Typography>
+        <Typography variant="h3" className="uniqa-user-name">
+          {user.name}
+        </Typography>
+
+        <Box className="uniqa-list-card">
+          {quickLinks.map((link) => (
+            <Box className="uniqa-list-item" key={link.label} onClick={link.onClick}>
+              <Box className="uniqa-list-icon">{link.icon}</Box>
+              <Typography className="uniqa-list-title">{link.label}</Typography>
+              <ChevronRight size={22} className="uniqa-chevron" />
+            </Box>
+          ))}
+        </Box>
+
+        <Grid container spacing={3} className="uniqa-offer-grid">
+          {offers.map((offer) => (
+            <Grid item xs={12} sm={6} md={3} key={offer.title}>
+              <Box className="uniqa-offer-card">
+                <img src={offer.image} alt={offer.title} />
+                <Typography className="uniqa-offer-title">{offer.title}</Typography>
+                <Typography className="uniqa-offer-action">{offer.action}</Typography>
+              </Box>
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
+    );
+  }
+
   const stats = [
     { label: brand.dashboard.activePolicies, value: summary.activePolicies, icon: <ShieldCheck size={22} /> },
     { label: brand.dashboard.openClaims, value: summary.openClaims, icon: <ClipboardList size={22} /> },
