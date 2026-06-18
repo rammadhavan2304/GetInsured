@@ -688,6 +688,349 @@ body {
   margin-bottom: 24px;
 }
 
+.theme-b-login {
+  align-items: stretch;
+  background: #f5f7fa;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  justify-content: flex-start;
+  padding: 0;
+}
+
+.theme-b-login .login-hero {
+  align-items: center;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  color: #005ca9;
+  display: flex;
+  max-width: none;
+  min-height: 72px;
+  padding: 8px max(32px, calc((100vw - 1200px) / 2));
+  width: 100%;
+}
+
+.theme-b-login .login-theme-row {
+  max-width: none;
+  width: 100%;
+}
+
+.theme-b-login .hero-chip {
+  background: transparent !important;
+  color: #005ca9 !important;
+  font-size: 1.35rem;
+  letter-spacing: -1px;
+  margin: 0;
+  padding-left: 0;
+}
+
+.theme-b-login .login-title,
+.theme-b-login .login-copy {
+  display: none;
+}
+
+.theme-b-login .login-card {
+  align-self: center;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  justify-self: auto;
+  margin: 80px 16px 0;
+  max-width: 480px;
+}
+
+.theme-b-frame {
+  background: #f5f7fa;
+}
+
+.theme-b-frame .topbar {
+  background: #fff !important;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.theme-b-frame .toolbar {
+  min-height: 72px !important;
+}
+
+.theme-b-frame .brand {
+  min-width: 260px;
+}
+
+.theme-b-frame .brand-mark {
+  display: none;
+}
+
+.theme-b-frame .brand-name {
+  color: #005ca9;
+  font-size: 1.5rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -1px;
+}
+
+.theme-b-frame .brand-caption {
+  display: none;
+}
+
+.theme-b-frame .nav-tabs {
+  gap: 0;
+}
+
+.theme-b-frame .nav-tab {
+  border-radius: 0 !important;
+  color: #333 !important;
+  font-size: 1.05rem;
+  font-weight: 500 !important;
+  min-height: 48px;
+  padding: 12px 16px !important;
+}
+
+.theme-b-frame .nav-tab .MuiButton-startIcon {
+  display: none;
+}
+
+.theme-b-frame .nav-tab.active {
+  background: transparent !important;
+  box-shadow: inset 0 -3px 0 #005ca9;
+  color: #005ca9 !important;
+  font-weight: 700 !important;
+}
+
+.theme-b-frame .main-container {
+  max-width: 1200px;
+  padding-bottom: 80px;
+  padding-top: 32px;
+}
+
+.theme-b-frame .avatar {
+  background: #ebf4ff !important;
+  color: #005ca9 !important;
+}
+
+.theme-b-frame .theme-toggle.compact {
+  background: #f5f7fa;
+  border: 0;
+  color: #666;
+}
+
+.uniqa-page {
+  padding: 40px 0 72px;
+}
+
+.uniqa-greeting {
+  color: #666;
+  font-size: 1.25rem;
+  margin-bottom: 4px;
+}
+
+.uniqa-user-name {
+  color: #222;
+  font-size: 2.75rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em;
+  margin-bottom: 48px !important;
+}
+
+.uniqa-list-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  width: 100%;
+}
+
+.uniqa-list-card.is-pending {
+  background: #fff3f3;
+  border-left: 4px solid #d32f2f;
+}
+
+.uniqa-list-item {
+  align-items: center;
+  border-bottom: 1px solid #e2e8f0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  min-height: 82px;
+  padding: 18px 24px;
+  transition: background 0.18s ease;
+  width: 100%;
+}
+
+.uniqa-list-item:hover {
+  background: #f8f9fa;
+}
+
+.uniqa-list-item.is-pending {
+  background: #fff3f3;
+}
+
+.uniqa-list-item.is-pending:hover {
+  background: #ffe7e7;
+}
+
+.uniqa-list-item:last-child {
+  border-bottom: 0;
+}
+
+.uniqa-list-icon {
+  color: #666;
+  display: grid;
+  flex: 0 0 36px;
+  place-items: center;
+}
+
+.uniqa-list-icon.danger {
+  color: #d32f2f;
+}
+
+.uniqa-list-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.uniqa-list-title {
+  color: #222;
+  flex: 1 1 auto;
+  font-size: 1.2rem !important;
+  font-weight: 700 !important;
+}
+
+.uniqa-chevron {
+  color: #c7c7c7;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.uniqa-offer-grid {
+  margin-top: 48px !important;
+}
+
+.uniqa-offer-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 24px;
+}
+
+.uniqa-offer-card img {
+  aspect-ratio: 16 / 9;
+  border-radius: 4px;
+  display: block;
+  height: auto;
+  margin-bottom: 24px;
+  object-fit: cover;
+  width: 100%;
+}
+
+.uniqa-offer-title {
+  color: #222;
+  flex: 1;
+  font-size: 1.15rem !important;
+  font-weight: 800 !important;
+  line-height: 1.35;
+  margin-bottom: 28px !important;
+}
+
+.uniqa-offer-action,
+.uniqa-action-title {
+  color: #005ca9;
+  font-size: 1rem !important;
+  font-weight: 800 !important;
+}
+
+.uniqa-empty-page {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  min-height: calc(100vh - 180px);
+  padding-top: 136px;
+  text-align: center;
+}
+
+.uniqa-empty-page h4,
+.uniqa-page-title,
+.uniqa-page-title-row h4,
+.uniqa-section-title {
+  color: #222;
+  font-weight: 800 !important;
+}
+
+.uniqa-empty-page p {
+  color: #999;
+  font-size: 1.25rem;
+}
+
+.uniqa-page-title,
+.uniqa-page-title-row h4 {
+  margin-bottom: 48px !important;
+}
+
+.uniqa-page-title-row {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 48px;
+}
+
+.uniqa-page-title-row h4 {
+  margin-bottom: 0 !important;
+}
+
+.uniqa-page-title-row .MuiButton-root {
+  box-shadow: 0 2px 8px rgba(0, 92, 169, 0.22);
+  min-width: 220px;
+  text-transform: uppercase;
+}
+
+.uniqa-section-title {
+  margin-bottom: 22px !important;
+}
+
+.uniqa-section-title.large-gap {
+  margin-top: 52px !important;
+}
+
+.uniqa-empty-copy {
+  color: #666;
+  font-size: 1.05rem !important;
+  font-style: italic;
+  margin-bottom: 48px !important;
+}
+
+.uniqa-action-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  min-height: 116px;
+  padding: 28px;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.uniqa-action-card:hover {
+  background: #f0f7ff;
+  border-color: #005ca9;
+}
+
+.uniqa-pending-block {
+  margin-bottom: 48px;
+}
+
+.uniqa-pending-heading {
+  align-items: center;
+  color: #d32f2f;
+  display: flex;
+  font-weight: 800 !important;
+  gap: 10px;
+  margin-bottom: 24px !important;
+}
+
 @media (max-width: 900px) {
   .login-page {
     grid-template-columns: 1fr;

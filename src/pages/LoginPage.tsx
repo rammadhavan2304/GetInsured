@@ -28,7 +28,7 @@ export function LoginPage({ brand, isThemeB, onThemeToggle, onLogin, error }: Lo
   };
 
   return (
-    <Box className="login-page">
+    <Box className={brand.id === 'themeB' ? 'login-page theme-b-login' : 'login-page'}>
       <Box className="login-hero">
         <Box className="login-theme-row">
           <Chip className="hero-chip" icon={<ChipIcon size={16} />} label={brand.loginChip} />

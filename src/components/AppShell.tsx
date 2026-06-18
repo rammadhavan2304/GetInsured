@@ -36,7 +36,7 @@ export function AppShell({ brand, isThemeB, onThemeToggle, activeTab, onTabChang
   const BrandIcon = brand.id === 'themeB' ? Umbrella : FileText;
 
   return (
-    <Box className="app-frame">
+    <Box className={brand.id === 'themeB' ? 'app-frame theme-b-frame' : 'app-frame'}>
       <AppBar position="sticky" elevation={0} color="inherit" className="topbar">
         <Container maxWidth="xl">
           <Toolbar disableGutters className="toolbar">
