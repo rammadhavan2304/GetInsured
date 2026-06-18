@@ -480,9 +480,10 @@ body {
 
 [data-brand='themeB'] .pega-workarea.is-active {
   background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 0;
 }
 
 [data-brand='themeB'] .uniqa-page {

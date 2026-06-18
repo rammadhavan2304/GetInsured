@@ -216,7 +216,7 @@ function App() {
       console.warn('[Pega PCore] Pending task refresh after action response failed', error);
     });
 
-          if (nextAssignmentId && isCustomerActionStatus(nextStatus)) {
+          if (nextAssignmentId && (!nextStatus || isCustomerActionStatus(nextStatus))) {
             suppressTransitionCloseUntil.current = Date.now() + 3000;
             setSubmissionNotice(null);
             setActiveAssignment({ assignmentID: nextAssignmentId });
@@ -246,15 +246,18 @@ function App() {
         method !== 'GET' &&
         url.includes('/api/application/v2/assignments/') &&
         url.includes('/actions/');
+      const isCaseCreateSubmit =
+        method === 'POST' &&
+        url.includes('/api/application/v2/cases');
 
-      if (!isAssignmentActionSubmit || !response.ok) {
+      if ((!isAssignmentActionSubmit && !isCaseCreateSubmit) || !response.ok) {
         return response;
       }
 
       void response
         .clone()
         .json()
-        .then((body) => handleAssignmentActionResponse(body, 'fetch'))
+        .then((body) => handleAssignmentActionResponse(body, isCaseCreateSubmit ? 'fetch-case-create' : 'fetch'))
         .catch(() => {
           // Non-JSON action responses are ignored.
         });
@@ -279,12 +282,15 @@ function App() {
           requestMethod !== 'GET' &&
           requestUrl.includes('/api/application/v2/assignments/') &&
           requestUrl.includes('/actions/');
+        const isCaseCreateSubmit =
+          requestMethod === 'POST' &&
+          requestUrl.includes('/api/application/v2/cases');
 
-        if (!isAssignmentActionSubmit || xhr.status < 200 || xhr.status >= 300 || !xhr.responseText) return;
+        if ((!isAssignmentActionSubmit && !isCaseCreateSubmit) || xhr.status < 200 || xhr.status >= 300 || !xhr.responseText) return;
 
         try {
           const body = JSON.parse(xhr.responseText);
-          void handleAssignmentActionResponse(body, 'xhr');
+          void handleAssignmentActionResponse(body, isCaseCreateSubmit ? 'xhr-case-create' : 'xhr');
         } catch {
           // Non-JSON action responses are ignored.
         }
@@ -366,10 +372,17 @@ function App() {
           sdkSetAuthHeader(authHeader);
         }
 
-        await createCaseInConstellation(caseTypeId, {
+        const createResponse = await createCaseInConstellation(caseTypeId, {
           ...buildCustomerCaseContent(pegaConfig, customerId),
           PolicyID: getPolicyIdForCase(policy)
         });
+
+        const nextAssignmentId = getNextAssignmentIdFromResponse(createResponse);
+        if (nextAssignmentId) {
+          suppressTransitionCloseUntil.current = Date.now() + 3000;
+          setActiveAssignment({ assignmentID: nextAssignmentId });
+          await openAssignmentInConstellation(nextAssignmentId);
+        }
 
         setToast(`${policy.title} claim case started in Pega.`);
       } catch (error) {

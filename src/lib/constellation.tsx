@@ -77,7 +77,7 @@ export async function createCaseInConstellation(caseTypeId: string, content: Rec
 
   PCore.getInitialiser().initCoreContainers();
 
-  await PCore
+  const response = await PCore
     .getBootstrapUtils()
     .getCaseApi()
     .createCase(caseTypeId, PCore.getConstants().APP.APP, PCore.getConstants().PRIMARY, {
@@ -88,6 +88,7 @@ export async function createCaseInConstellation(caseTypeId: string, content: Rec
     });
 
   PCore.getCoexistenceManager()?.getEventUtils?.().publishConstellationLoadedEvent?.();
+  return response;
 }
 
 export async function openAssignmentInConstellation(assignmentId: string) {
