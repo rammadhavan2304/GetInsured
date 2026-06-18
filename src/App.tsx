@@ -322,6 +322,7 @@ function App() {
     policy.id && !policy.id.startsWith('policy-') ? policy.id : policy.policyNumber;
 
   const handleStartPolicyClaim = (policy: PolicySummary) => {
+    const client = createDxClient(authToken);
     const motorClaimOption = snapshot.claimCaseOptions.find(
       (option) => option.id === 'claim-motor' || option.label.toLowerCase().includes('motor')
     );
@@ -335,48 +336,17 @@ function App() {
           ? pegaConfig?.caseTypes.motorClaim || motorClaimOption?.caseTypeId || pegaConfig?.caseTypes.claim
           : pegaConfig?.caseTypes.claim || motorClaimOption?.caseTypeId;
 
-    if (!pegaConfigured) {
-      setToast('Pega DX API is not configured yet. Add .env values to enable this action.');
-      return;
-    }
-
-    if (!isPegaReady || !window.PCore?.getBootstrapUtils?.()?.getCaseApi) {
-      setToast('Pega Constellation runtime is still loading. Try again in a moment.');
-      return;
-    }
-
-    if (!pegaConfig || !customerId) {
-      setToast('Customer ID is not available for this Pega request.');
-      return;
-    }
-
-    if (!caseTypeId) {
-      setToast('Policy claim case type is not configured.');
-      return;
-    }
-
-    setSubmissionNotice(null);
-    setActiveAssignment({ assignmentID: 'NEW_CASE' });
-    setPegaRenderError(null);
-
-    void (async () => {
-      try {
-        const authHeader = getPegaAuthHeader(authToken);
-        if (authHeader) {
-          sdkSetAuthHeader(authHeader);
-        }
-
-        await createCaseInConstellation(caseTypeId, {
+    void runPegaAction(async () => {
+      if (!client || !caseTypeId) throw new Error('Policy claim case type is not configured.');
+      if (!pegaConfig || !customerId) throw new Error('Customer ID is not available for this Pega request.');
+      return client.createCase(
+        caseTypeId,
+        {
           ...buildCustomerCaseContent(pegaConfig, customerId),
           PolicyID: getPolicyIdForCase(policy)
-        });
-
-        setToast(`${policy.title} claim case started in Pega.`);
-      } catch (error) {
-        setActiveAssignment(null);
-        setToast(error instanceof Error ? error.message : 'Unable to start policy claim case.');
-      }
-    })();
+        }
+      );
+    }, `${policy.title} claim case created in Pega.`);
   };
 
   const handleStartService = (request: ServiceRequestSummary) => {
