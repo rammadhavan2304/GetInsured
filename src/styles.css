@@ -306,6 +306,49 @@ body {
   height: 100%;
 }
 
+.pega-workarea div:has(> b:first-child):has(> button.psdk-utility-button[aria-label='Delete Row']) {
+  border: 1px solid #dfe7e2;
+  border-radius: 8px;
+  margin: 14px 0 18px;
+  padding: 16px;
+}
+
+.pega-workarea div:has(> b:first-child):has(> button.psdk-utility-button[aria-label='Delete Row']) > b:first-child {
+  display: inline-block;
+  font-size: 1rem;
+  margin-bottom: 12px;
+}
+
+.pega-workarea .psdk-utility-button {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #cbd5df;
+  border-radius: 999px;
+  color: #4b5563;
+  display: inline-flex;
+  height: 34px;
+  justify-content: center;
+  min-width: 34px;
+  padding: 0 10px;
+}
+
+.pega-workarea .psdk-utility-button:hover {
+  background: #fff5f5;
+  border-color: #d32f2f;
+  color: #b91c1c;
+}
+
+.pega-workarea .psdk-utility-button .psdk-utility-card-action-svg-icon {
+  display: none;
+}
+
+.pega-workarea .psdk-utility-button[aria-label*='Delete']::before {
+  content: 'X';
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
 [data-brand='themeB'] body {
   background: #f5f7fa;
 }

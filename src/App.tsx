@@ -128,6 +128,7 @@ function App() {
   const [submissionNotice, setSubmissionNotice] = useState<string | null>(null);
   const [pegaRenderError, setPegaRenderError] = useState<string | null>(null);
   const [startingServiceId, setStartingServiceId] = useState<string | null>(null);
+  const [startingClaimId, setStartingClaimId] = useState<string | null>(null);
   const [activeAssignment, setActiveAssignment] = useState<{ assignmentID: string } | null>(null);
   const [webEmbedOpen, setWebEmbedOpen] = useState(false);
   const activeAssignmentRef = useRef<{ assignmentID: string } | null>(null);
@@ -302,20 +303,50 @@ function App() {
     };
   }, [isAuthenticated, isPegaReady]);
 
+  const getClaimCaseTypeId = (option: ClaimCaseOption) => {
+    if (option.id === 'claim-motor') return pegaConfig?.caseTypes.motorClaim || option.caseTypeId;
+    if (option.id === 'claim-health') return pegaConfig?.caseTypes.healthClaim || option.caseTypeId;
+    return option.caseTypeId || pegaConfig?.caseTypes.claim;
+  };
+
   const handleCreateClaim = (option: ClaimCaseOption) => {
-    const client = createDxClient(authToken);
-    const caseTypeId = option.caseTypeId || pegaConfig?.caseTypes.claim;
-    void runPegaAction(async () => {
-      if (!client || !caseTypeId) throw new Error('Claim case type is not configured.');
-      if (!pegaConfig || !customerId) throw new Error('Customer ID is not available for this Pega request.');
-      return client.createCase(
-        caseTypeId,
-        buildCustomerCaseContent(pegaConfig, customerId, {
-          source: 'GetInsured portal',
-          requestType: option.label
-        })
-      );
-    }, `${option.label} case created in Pega.`);
+    if (!pegaConfigured) {
+      setToast('Pega DX API is not configured yet. Add .env values to enable this action.');
+      return;
+    }
+
+    const PCore = window.PCore;
+    if (!isPegaReady || !PCore?.getBootstrapUtils?.()?.getCaseApi) {
+      setToast('Pega Constellation runtime is still loading. Try again in a moment.');
+      return;
+    }
+
+    const caseTypeId = getClaimCaseTypeId(option);
+
+    setSubmissionNotice(null);
+    setStartingClaimId(option.id);
+    setActiveAssignment({ assignmentID: 'NEW_CASE' });
+    setPegaRenderError(null);
+
+    void (async () => {
+      try {
+        const authHeader = getPegaAuthHeader(authToken);
+        if (authHeader) {
+          sdkSetAuthHeader(authHeader);
+        }
+
+        if (!caseTypeId) throw new Error('Claim case type is not configured.');
+        if (!pegaConfig || !customerId) throw new Error('Customer ID is not available for this Pega request.');
+
+        await createCaseInConstellation(caseTypeId, buildCustomerCaseContent(pegaConfig, customerId));
+        setToast(`${option.label} case started in Pega.`);
+      } catch (error) {
+        setActiveAssignment(null);
+        setToast(error instanceof Error ? error.message : 'Unable to start Pega claim.');
+      } finally {
+        setStartingClaimId(null);
+      }
+    })();
   };
 
   const handlePolicyChange = (policy: PolicySummary) => {
@@ -725,6 +756,8 @@ function App() {
                   claims={snapshot.claims}
                   claimCaseOptions={snapshot.claimCaseOptions}
                   pegaConfigured={pegaConfigured}
+                  isPegaReady={isPegaReady}
+                  startingClaimId={startingClaimId}
                   onCreateClaim={handleCreateClaim}
                 />
               }

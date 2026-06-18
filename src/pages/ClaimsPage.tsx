@@ -9,6 +9,8 @@ interface ClaimsPageProps {
   claims: ClaimSummary[];
   claimCaseOptions: ClaimCaseOption[];
   pegaConfigured: boolean;
+  isPegaReady: boolean;
+  startingClaimId?: string | null;
   onCreateClaim: (option: ClaimCaseOption) => void;
 }
 
@@ -22,7 +24,18 @@ const claimOptionDescription = (option: ClaimCaseOption) =>
   option.description ||
   `Start a ${option.label.toLowerCase()} request.`;
 
-export function ClaimsPage({ brand, claims, claimCaseOptions, pegaConfigured, onCreateClaim }: ClaimsPageProps) {
+export function ClaimsPage({
+  brand,
+  claims,
+  claimCaseOptions,
+  pegaConfigured,
+  isPegaReady,
+  startingClaimId,
+  onCreateClaim
+}: ClaimsPageProps) {
+  const canCreateClaim = (option?: ClaimCaseOption) =>
+    Boolean(option) && pegaConfigured && isPegaReady && startingClaimId !== option?.id;
+
   if (brand.id === 'themeB') {
     const firstOption = claimCaseOptions[0];
 
@@ -33,14 +46,15 @@ export function ClaimsPage({ brand, claims, claimCaseOptions, pegaConfigured, on
           <Button
             variant="contained"
             startIcon={<PlusCircle size={20} />}
-            disabled={!pegaConfigured || !firstOption}
+            disabled={!canCreateClaim(firstOption)}
             onClick={() => firstOption && onCreateClaim(firstOption)}
           >
-            Submit new claim
+            {startingClaimId === firstOption?.id ? 'Starting claim' : 'Submit new claim'}
           </Button>
         </Box>
 
         {!pegaConfigured && <ActionUnavailableNotice />}
+        {pegaConfigured && !isPegaReady && <Box className="inline-note">{brand.services.loading}</Box>}
 
         <Typography variant="h5" className="uniqa-section-title">
           My Tasks (Worklist)
@@ -75,9 +89,11 @@ export function ClaimsPage({ brand, claims, claimCaseOptions, pegaConfigured, on
         <Grid container spacing={2}>
           {claimCaseOptions.map((option) => (
             <Grid item xs={12} md={6} key={option.id}>
-              <Box className="uniqa-action-card" onClick={() => pegaConfigured && onCreateClaim(option)}>
+              <Box className="uniqa-action-card" onClick={() => canCreateClaim(option) && onCreateClaim(option)}>
                 <Typography className="uniqa-action-title">{option.label}</Typography>
-                <Typography color="text.secondary">{claimOptionDescription(option)}</Typography>
+                <Typography color="text.secondary">
+                  {startingClaimId === option.id ? 'Starting claim in Pega...' : claimOptionDescription(option)}
+                </Typography>
               </Box>
             </Grid>
           ))}
@@ -113,10 +129,10 @@ export function ClaimsPage({ brand, claims, claimCaseOptions, pegaConfigured, on
                   <Button
                     variant="contained"
                     startIcon={<ClipboardPlus size={18} />}
-                    disabled={!pegaConfigured}
+                    disabled={!canCreateClaim(option)}
                     onClick={() => onCreateClaim(option)}
                   >
-                    {brand.claims.start}
+                    {startingClaimId === option.id ? 'Starting...' : brand.claims.start}
                   </Button>
                 </Stack>
               </CardContent>
