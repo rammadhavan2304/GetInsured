@@ -24,7 +24,7 @@
  */
 
 (function() {
-  const BASE_URL = 'https://kfvow8ae.pegace.net/prweb/PRAuth/app/insurehub/api/application/v2';
+  const BASE_URL = 'https://ymq7dynw.pegace.net/prweb/PRAuth/app/insurehub/api/application/v2';
   const AGENT_ID = 'IH-INSURE-WORK-POLICYCLARIFICATION!POLICYQUESTION';
 
   let currentConvId = null;

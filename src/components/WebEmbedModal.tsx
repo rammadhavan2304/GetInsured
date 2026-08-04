@@ -1,6 +1,7 @@
 import { Box, Dialog, DialogContent, DialogTitle, IconButton, Typography } from '@mui/material';
 import { X } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
+import { getPegaConfig } from '../config/pegaConfig';
 
 declare global {
   namespace JSX {
@@ -32,9 +33,10 @@ interface WebEmbedModalProps {
   authHeader: string;
 }
 
-const WEB_EMBED_SCRIPT_URL = 'https://kfvow8ae.pegace.net/prweb/PRRestService/c11nsvc/v1/pega-embed.js';
-
 export function WebEmbedModal({ open, onClose, customerId, authHeader }: WebEmbedModalProps) {
+  const pegaConfig = getPegaConfig();
+  const pegaServerUrl = `${(pegaConfig?.baseUrl || '').replace(/\/PRAuth\/?$/i, '').replace(/\/$/, '')}/`;
+  const webEmbedScriptUrl = `${pegaServerUrl}PRRestService/c11nsvc/v1/pega-embed.js`;
   const embedId = useRef(`contact-details-embed-${Date.now()}`);
   const embedRef = useRef<HTMLElement | null>(null);
   const startingFields = useMemo(
@@ -58,30 +60,43 @@ export function WebEmbedModal({ open, onClose, customerId, authHeader }: WebEmbe
       }, 100);
     };
 
-    const existingScript = document.querySelector(`script[src="${WEB_EMBED_SCRIPT_URL}"]`);
+    const existingScript = document.querySelector(`script[src="${webEmbedScriptUrl}"]`);
     if (existingScript) {
       loadEmbed();
       return;
     }
 
     const script = document.createElement('script');
-    script.src = WEB_EMBED_SCRIPT_URL;
+    script.src = webEmbedScriptUrl;
     script.async = true;
     script.onload = loadEmbed;
     document.head.appendChild(script);
-  }, [open, authHeader, startingFields]);
+  }, [open, authHeader, startingFields, webEmbedScriptUrl]);
 
   useEffect(() => {
     if (!open) return;
 
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'pegaEmbedComplete' || event.data?.action === 'completed') {
-        onClose();
-      }
-    };
+    const embed = embedRef.current;
+    if (!embed) return;
 
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    // Pega Web Embed emits CustomEvents on the embed element, not window.postMessage events.
+    // The submission event is the reliable signal for this one-assignment contact-details flow.
+    const closeOnSubmission = () => onClose();
+    const closeOnProcessingEnd = () => onClose();
+    const closeOnCaseClosed = () => onClose();
+    const closeOnCancel = () => onClose();
+
+    embed.addEventListener('embedassignmentsubmission', closeOnSubmission);
+    embed.addEventListener('embedprocessingend', closeOnProcessingEnd);
+    embed.addEventListener('embedcaseclosed', closeOnCaseClosed);
+    embed.addEventListener('embedeventcancel', closeOnCancel);
+
+    return () => {
+      embed.removeEventListener('embedassignmentsubmission', closeOnSubmission);
+      embed.removeEventListener('embedprocessingend', closeOnProcessingEnd);
+      embed.removeEventListener('embedcaseclosed', closeOnCaseClosed);
+      embed.removeEventListener('embedeventcancel', closeOnCancel);
+    };
   }, [open, onClose]);
 
   return (
@@ -102,12 +117,12 @@ export function WebEmbedModal({ open, onClose, customerId, authHeader }: WebEmbe
           ref={embedRef}
           id={embedId.current}
           action="createCase"
-          caseTypeID="IH-Insure-Work-ChangeContactDetails"
+          caseTypeID={pegaConfig?.caseTypes.changeContact || 'IH-Insure-Work-ChangeContactDetails'}
           themeID="pyWebSelfService"
           casePage="assignment"
           assignmentHeader="false"
-          appAlias="insurehub"
-          pegaServerUrl="https://kfvow8ae.pegace.net/prweb/"
+          appAlias={pegaConfig?.appAlias || 'insurehub'}
+          pegaServerUrl={pegaServerUrl}
           grantType="none"
           deferLoad="true"
           authHeader={authHeader}

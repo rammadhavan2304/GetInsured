@@ -3,9 +3,9 @@ import {
   Box, Button, Chip, IconButton, Paper, Stack, TextField, 
   Typography, CircularProgress, Link 
 } from '@mui/material';
-import { Send, X, ExternalLink, Bot, User } from 'lucide-react';
+import { Send, X, ExternalLink, Bot, User, Paperclip } from 'lucide-react';
 import { createDxClient } from '../services/portalDataService';
-import type { PegaDxClient } from '../services/pegaDxClient';
+import type { PegaAgentAttachment, PegaDxClient } from '../services/pegaDxClient';
 import type { PolicySummary } from '../types/portal';
 import type { PegaToken } from '../types/pega';
 
@@ -22,15 +22,36 @@ interface PolicyAIChatProps {
 }
 
 const AGENT_ID = 'IH-INSURE-WORK-POLICYCLARIFICATION!POLICYQUESTION';
+const MAX_CHAT_ATTACHMENTS = 3;
+const MAX_CHAT_ATTACHMENT_SIZE_MB = 10;
 
-function buildAgentRequest(question: string, customerId: string | null | undefined, policy: PolicySummary) {
+interface PendingAttachment {
+  id: string;
+  file: File;
+}
+
+const formatFileSize = (size: number) => {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+function buildAgentRequest(
+  question: string,
+  customerId: string | null | undefined,
+  policy: PolicySummary,
+  attachments: PegaAgentAttachment[]
+) {
   const fullDocumentUrl = policy.documentURL || '';
   const documentId = policy.documentId || (fullDocumentUrl ? fullDocumentUrl.split('/').pop() : '');
+  const policyId = policy.id || policy.policyNumber;
   const parameters = {
     CustomerID: customerId || '',
+    PolicyID: policyId,
     Document: fullDocumentUrl,
     DocumentID: documentId || fullDocumentUrl,
     DocumentURL: fullDocumentUrl,
+    Attachments: attachments,
     ChatQuestionPrompt: question,
   };
 
@@ -39,9 +60,16 @@ function buildAgentRequest(question: string, customerId: string | null | undefin
     '',
     'Use the following tool parameters for this policy question:',
     `CustomerID: ${parameters.CustomerID}`,
+    `PolicyID: ${parameters.PolicyID}`,
     `Document: ${parameters.Document}`,
     `DocumentID: ${parameters.DocumentID}`,
     `DocumentURL: ${parameters.DocumentURL}`,
+    ...(attachments.length > 0
+      ? [
+          'Attachments:',
+          ...attachments.map((attachment) => `- ${attachment.name} (${attachment.type}) ID: ${attachment.ID}`)
+        ]
+      : []),
     `ChatQuestionPrompt: ${parameters.ChatQuestionPrompt}`,
   ].join('\n');
 
@@ -56,11 +84,13 @@ export function PolicyAIChat({ policy, authToken, customerId, onClose }: PolicyA
     }
   ]);
   const [input, setInput] = useState('');
+  const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const dxClient = authToken ? createDxClient(authToken) : null;
   const canUseAI = !!dxClient && !!policy.documentURL;
 
@@ -80,17 +110,29 @@ export function PolicyAIChat({ policy, authToken, customerId, onClose }: PolicyA
 
   const sendQuestion = async (questionText?: string) => {
     const question = (questionText || input).trim();
-    if (!question || !dxClient || !canUseAI) return;
+    if ((!question && pendingAttachments.length === 0) || !dxClient || !canUseAI) return;
 
-    const userMessage: Message = { role: 'user', content: question };
+    const filesToSend = [...pendingAttachments];
+    const userContent = [
+      question || 'Please review the attached file.',
+      ...filesToSend.map((attachment) => `Attached: ${attachment.file.name}`)
+    ].join('\n');
+    const userMessage: Message = { role: 'user', content: userContent };
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
+    setPendingAttachments([]);
     setIsLoading(true);
     setError(null);
 
-    const { requestText, parameters } = buildAgentRequest(question, customerId, policy);
-
     try {
+      const uploadedAttachments = await Promise.all(filesToSend.map((attachment) => dxClient.uploadAttachment(attachment.file)));
+      const { requestText, parameters } = buildAgentRequest(
+        question || 'Please review the attached file.',
+        customerId,
+        policy,
+        uploadedAttachments
+      );
+
       console.log('[PolicyAIChat] Sending to agent with request parameters', {
         agentId: AGENT_ID,
         isNewConversation: !conversationId,
@@ -120,7 +162,8 @@ export function PolicyAIChat({ policy, authToken, customerId, onClose }: PolicyA
           const streamResult = await dxClient.sendMessageToAgentConversationWithStream(
             AGENT_ID,
             newConvId,
-            requestText
+            requestText,
+            uploadedAttachments
           );
           assistantText = streamResult.response || '';
         }
@@ -129,7 +172,8 @@ export function PolicyAIChat({ policy, authToken, customerId, onClose }: PolicyA
         const streamResult = await dxClient.sendMessageToAgentConversationWithStream(
           AGENT_ID,
           conversationId,
-          requestText
+          requestText,
+          uploadedAttachments
         );
         assistantText = streamResult.response || '';
       }
@@ -151,7 +195,7 @@ export function PolicyAIChat({ policy, authToken, customerId, onClose }: PolicyA
       console.error('[PolicyAIChat] Agent call failed', {
         agentId: AGENT_ID,
         question,
-        parameters,
+        attachments: filesToSend.map((attachment) => attachment.file.name),
         error: realError,
         conversationId
       });
@@ -244,6 +288,45 @@ export function PolicyAIChat({ policy, authToken, customerId, onClose }: PolicyA
 
   const handleSuggestedClick = (q: string) => {
     sendQuestion(q);
+  };
+
+  const handleAttachmentChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (selectedFiles.length === 0) return;
+
+    const remainingSlots = MAX_CHAT_ATTACHMENTS - pendingAttachments.length;
+    if (remainingSlots <= 0) {
+      setError(`You can attach up to ${MAX_CHAT_ATTACHMENTS} files per message.`);
+      return;
+    }
+
+    const maxBytes = MAX_CHAT_ATTACHMENT_SIZE_MB * 1024 * 1024;
+    const acceptedFiles = selectedFiles
+      .filter((file) => {
+        if (file.size > maxBytes) {
+          setError(`${file.name} is larger than ${MAX_CHAT_ATTACHMENT_SIZE_MB} MB.`);
+          return false;
+        }
+        return true;
+      })
+      .slice(0, remainingSlots);
+
+    if (acceptedFiles.length < selectedFiles.length && selectedFiles.length > remainingSlots) {
+      setError(`Only ${MAX_CHAT_ATTACHMENTS} files can be attached per message.`);
+    }
+
+    setPendingAttachments((current) => [
+      ...current,
+      ...acceptedFiles.map((file) => ({
+        id: `${file.name}-${file.size}-${file.lastModified}-${crypto.randomUUID()}`,
+        file
+      }))
+    ]);
+  };
+
+  const removeAttachment = (id: string) => {
+    setPendingAttachments((current) => current.filter((attachment) => attachment.id !== id));
   };
 
   const documentName = policy.documentId || 
@@ -453,7 +536,41 @@ export function PolicyAIChat({ policy, authToken, customerId, onClose }: PolicyA
       )}
 
       <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
+        {pendingAttachments.length > 0 && (
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
+            {pendingAttachments.map((attachment) => (
+              <Chip
+                key={attachment.id}
+                icon={<Paperclip size={14} />}
+                label={`${attachment.file.name} (${formatFileSize(attachment.file.size)})`}
+                onDelete={() => removeAttachment(attachment.id)}
+                size="small"
+                variant="outlined"
+              />
+            ))}
+          </Stack>
+        )}
         <Stack direction="row" spacing={1}>
+          <input
+            ref={fileInputRef}
+            hidden
+            type="file"
+            multiple
+            onChange={handleAttachmentChange}
+          />
+          <IconButton
+            color="primary"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={!canUseAI || isLoading || pendingAttachments.length >= MAX_CHAT_ATTACHMENTS}
+            sx={{
+              width: 44,
+              height: 44,
+              border: '1px solid',
+              borderColor: 'divider'
+            }}
+          >
+            <Paperclip size={18} />
+          </IconButton>
           <TextField
             fullWidth
             size="small"
@@ -474,7 +591,7 @@ export function PolicyAIChat({ policy, authToken, customerId, onClose }: PolicyA
           <IconButton 
             color="primary" 
             onClick={() => sendQuestion()} 
-            disabled={!canUseAI || !input.trim() || isLoading}
+            disabled={!canUseAI || (!input.trim() && pendingAttachments.length === 0) || isLoading}
             sx={{ 
               width: 44, height: 44, 
               bgcolor: 'primary.main', 

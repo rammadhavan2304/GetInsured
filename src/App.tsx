@@ -86,9 +86,17 @@ const getCustomerActionStatusFromResponse = (value: unknown) =>
 
 const SESSION_STORAGE_KEY = 'getinsured.pegaSession';
 
+const getPegaConnectionKey = () => {
+  const config = getPegaConfig();
+  if (!config) return '';
+
+  return `${config.baseUrl.replace(/\/$/, '')}|${config.appAlias || ''}`;
+};
+
 interface StoredPegaSession {
   token: PegaToken;
   customerId: string;
+  connectionKey: string;
 }
 
 const loadStoredSession = (): StoredPegaSession | null => {
@@ -97,7 +105,12 @@ const loadStoredSession = (): StoredPegaSession | null => {
     if (!raw) return null;
 
     const session = JSON.parse(raw) as StoredPegaSession;
-    if (!session?.token?.accessToken || !session.customerId || session.token.expiresAt <= Date.now()) {
+    if (
+      !session?.token?.accessToken ||
+      !session.customerId ||
+      session.connectionKey !== getPegaConnectionKey() ||
+      session.token.expiresAt <= Date.now()
+    ) {
       window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
       return null;
     }
@@ -659,7 +672,8 @@ function App() {
             const loggedInCustomerId = session.user.name;
             storeSession({
               token: session.token,
-              customerId: loggedInCustomerId
+              customerId: loggedInCustomerId,
+              connectionKey: getPegaConnectionKey()
             });
             setAuthToken(session.token);
             setCustomerId(loggedInCustomerId);

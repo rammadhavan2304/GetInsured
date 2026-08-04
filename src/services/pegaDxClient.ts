@@ -16,6 +16,13 @@ interface TokenResponse {
   token_type?: string;
 }
 
+export interface PegaAgentAttachment {
+  ID: string;
+  name: string;
+  type: 'File';
+  category?: string;
+}
+
 export class PegaDxClient {
   private token?: string;
 
@@ -222,6 +229,40 @@ export class PegaDxClient {
     });
   }
 
+  async uploadAttachment(file: File) {
+    const token = await this.authenticate();
+    const base = this.getApplicationApiBase();
+    const body = new FormData();
+    body.append('file', file, file.name);
+
+    const response = await fetch(`${base}/attachments/upload`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(`Pega attachment upload failed with ${response.status}: ${text.slice(0, 240)}`);
+    }
+
+    const data = (await response.json()) as { ID?: string; id?: string; data?: { ID?: string; id?: string } };
+    const id = data.ID || data.id || data.data?.ID || data.data?.id;
+
+    if (!id) {
+      throw new Error('Pega attachment upload did not return an attachment ID.');
+    }
+
+    return {
+      ID: id,
+      name: file.name,
+      type: 'File' as const
+    };
+  }
+
   // === AI Agent (A2A / AgentX) support ===
   // Using the standard DX application/v2 surface for /ai-agents.
   // The DX schema does not define arbitrary context on message calls, so caller
@@ -254,14 +295,18 @@ export class PegaDxClient {
   async sendMessageToAgentConversation(
     agentId: string,
     conversationId: string,
-    content: string
+    content: string,
+    attachments: PegaAgentAttachment[] = []
   ) {
     const path = `/ai-agents/${encodeURIComponent(agentId)}/conversations/${encodeURIComponent(conversationId)}`;
     return this.request(
       path,
       {
         method: 'PATCH',
-        body: JSON.stringify({ Request: content })
+        body: JSON.stringify({
+          Request: content,
+          ...(attachments.length > 0 ? { Attachments: attachments } : {})
+        })
       }
     );
   }
@@ -278,7 +323,8 @@ export class PegaDxClient {
   async sendMessageToAgentConversationWithStream(
     agentId: string,
     conversationId: string,
-    requestText: string
+    requestText: string,
+    attachments: PegaAgentAttachment[] = []
   ): Promise<{ response: string }> {
     const path = `/ai-agents/${encodeURIComponent(agentId)}/conversations/${encodeURIComponent(conversationId)}`;
     const token = await this.authenticate();
@@ -293,6 +339,7 @@ export class PegaDxClient {
       },
       body: JSON.stringify({
         Request: requestText,
+        ...(attachments.length > 0 ? { Attachments: attachments } : {}),
         capabilities: {
           stream: { isEnabled: true }
         }
